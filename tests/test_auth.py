@@ -1,5 +1,5 @@
 from app.models import User
-from app.extensions import db
+from app.auth.routes import is_safe_url
 
 
 def test_password_hashing(app):
@@ -109,3 +109,33 @@ def test_role_authorization_protection(client, student_user):
     response = client.get('/admin/dashboard')
     assert response.status_code == 403
     assert b"Access Forbidden" in response.data
+
+
+def test_open_redirect_protection(client, student_user, app):
+    """Verify system blocks open redirect attempts via the next parameter."""
+    with app.test_request_context('/login'):
+        assert is_safe_url('/events') is True
+        assert is_safe_url('/student/dashboard') is True
+        assert is_safe_url('http://evil.com') is False
+        assert is_safe_url('https://malicious-site.com/hack') is False
+        assert is_safe_url('javascript:alert(1)') is False
+        assert is_safe_url('///evil.com') is False
+        assert is_safe_url('/\\evil.com') is False
+        assert is_safe_url('') is False
+        assert is_safe_url(None) is False
+
+
+def test_empty_signup_validation(client):
+    """Verify submitting an empty signup form does not crash and shows validation errors."""
+    response = client.post('/signup', data={})
+    assert response.status_code == 200
+    assert b"Full name is required." in response.data
+    assert b"Email address is required." in response.data
+
+
+def test_security_headers_present(client):
+    """Verify HTTP security headers are set on responses."""
+    response = client.get('/')
+    assert response.headers.get('X-Content-Type-Options') == 'nosniff'
+    assert response.headers.get('X-Frame-Options') == 'SAMEORIGIN'
+    assert response.headers.get('X-XSS-Protection') == '1; mode=block'

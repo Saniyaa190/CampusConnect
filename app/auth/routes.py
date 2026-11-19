@@ -8,12 +8,18 @@ from app.forms import LoginForm, SignupForm
 
 
 def is_safe_url(target):
-    """Ensure redirect URL belongs to this domain to prevent open redirects."""
+    """Ensure redirect URL belongs to this domain and is safe to prevent open redirects."""
     if not target:
         return False
     ref_url = urlsplit(request.host_url)
     test_url = urlsplit(target)
-    return test_url.scheme in ('http', 'https') and ref_url.netloc == test_url.netloc or not test_url.netloc
+
+    # If an absolute URL with scheme is provided, verify scheme and host match
+    if test_url.scheme:
+        return test_url.scheme in ('http', 'https') and ref_url.netloc == test_url.netloc
+
+    # Relative path validation: must start with single '/', avoid protocol-relative '//', and prevent backslashes
+    return target.startswith('/') and not target.startswith('//') and '\\' not in target
 
 
 @auth_bp.route('/signup', methods=['GET', 'POST'])

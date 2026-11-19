@@ -94,7 +94,7 @@ def create_event():
 @admin_required
 def edit_event(event_id):
     """Edit existing event details."""
-    event = Event.query.get_or_404(event_id)
+    event = db.get_or_404(Event, event_id)
     form = EventForm(obj=event)
 
     if form.validate_on_submit():
@@ -137,7 +137,7 @@ def delete_event(event_id):
         flash("Invalid request token.", "danger")
         return redirect(url_for('admin.dashboard'))
 
-    event = Event.query.get_or_404(event_id)
+    event = db.get_or_404(Event, event_id)
     event_title = event.title
 
     db.session.delete(event)
@@ -152,7 +152,7 @@ def delete_event(event_id):
 @admin_required
 def event_participants(event_id):
     """View detailed list of student participants for an event."""
-    event = Event.query.get_or_404(event_id)
+    event = db.get_or_404(Event, event_id)
     registrations = (
         Registration.query
         .filter_by(event_id=event.id)

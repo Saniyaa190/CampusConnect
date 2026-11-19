@@ -1,5 +1,5 @@
 from datetime import date
-from flask import render_template, redirect, url_for, flash, request, abort
+from flask import render_template, redirect, url_for, flash, request
 from flask_login import current_user, login_required
 from app.events import events_bp
 from app.extensions import db
@@ -57,7 +57,7 @@ def index():
 @events_bp.route('/events/<int:event_id>')
 def detail(event_id):
     """View details of a specific event."""
-    event = Event.query.get_or_404(event_id)
+    event = db.get_or_404(Event, event_id)
     form = EmptyForm()
 
     user_registration = None
@@ -85,7 +85,7 @@ def register(event_id):
         flash("Invalid request token. Please try again.", "danger")
         return redirect(url_for('events.detail', event_id=event_id))
 
-    event = Event.query.get_or_404(event_id)
+    event = db.get_or_404(Event, event_id)
 
     # Business rule validation
     can_reg, message = event.can_register(current_user)
@@ -133,7 +133,7 @@ def cancel(event_id):
         flash("Invalid request token. Please try again.", "danger")
         return redirect(url_for('events.detail', event_id=event_id))
 
-    event = Event.query.get_or_404(event_id)
+    event = db.get_or_404(Event, event_id)
 
     if not current_user.is_student:
         flash("Only students can manage registrations.", "warning")
@@ -161,8 +161,11 @@ def cancel(event_id):
         db.session.rollback()
         flash("Unable to cancel registration due to a server error. Please try again.", "danger")
 
-    # Redirect to registrations page if came from there, else event details
+    # Redirect back to caller (dashboard or registrations page if referrer matches, else event details)
     next_url = request.referrer
-    if next_url and 'registrations' in next_url:
-        return redirect(url_for('student.registrations'))
+    if next_url:
+        if 'registrations' in next_url:
+            return redirect(url_for('student.registrations'))
+        if 'dashboard' in next_url:
+            return redirect(url_for('student.dashboard'))
     return redirect(url_for('events.detail', event_id=event_id))

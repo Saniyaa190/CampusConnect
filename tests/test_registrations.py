@@ -116,3 +116,35 @@ def test_admin_event_participants_view(client, admin_user, student_user, sample_
     assert b"Participant Roster" in response.data
     assert b"Aarav Sharma" in response.data
     assert b"aarav@college.edu" in response.data
+
+
+def test_cancel_redirects_to_referrer_dashboard(client, student_user, sample_event):
+    """Verify that cancelling from dashboard redirects back to student dashboard."""
+    client.post('/login', data={'email': 'aarav@college.edu', 'password': 'Student@123'})
+    client.post(f'/events/{sample_event.id}/register')
+
+    # Cancel with dashboard as referrer
+    response = client.post(
+        f'/events/{sample_event.id}/cancel',
+        headers={'Referer': 'http://localhost/student/dashboard'},
+        follow_redirects=True
+    )
+    assert response.status_code == 200
+    assert b"Student Hub" in response.data
+    assert b"has been cancelled" in response.data
+
+
+def test_cancel_redirects_to_referrer_registrations(client, student_user, sample_event):
+    """Verify that cancelling from registrations table redirects back to registrations."""
+    client.post('/login', data={'email': 'aarav@college.edu', 'password': 'Student@123'})
+    client.post(f'/events/{sample_event.id}/register')
+
+    # Cancel with registrations as referrer
+    response = client.post(
+        f'/events/{sample_event.id}/cancel',
+        headers={'Referer': 'http://localhost/student/registrations'},
+        follow_redirects=True
+    )
+    assert response.status_code == 200
+    assert b"My Event Registrations" in response.data
+    assert b"has been cancelled" in response.data

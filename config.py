@@ -24,6 +24,11 @@ class Config:
     # Custom DATABASE_URL override if explicitly provided
     custom_db_url = os.getenv('DATABASE_URL')
     if custom_db_url:
+        # Normalize dialect prefixes for SQLAlchemy compatibility
+        if custom_db_url.startswith("postgres://"):
+            custom_db_url = custom_db_url.replace("postgres://", "postgresql://", 1)
+        elif custom_db_url.startswith("mysql://"):
+            custom_db_url = custom_db_url.replace("mysql://", "mysql+pymysql://", 1)
         SQLALCHEMY_DATABASE_URI = custom_db_url
     else:
         # Build standard MySQL 8 URI with PyMySQL
@@ -33,11 +38,18 @@ class Config:
             f"mysql+pymysql://{auth_part}@{DB_HOST}:{DB_PORT}/{DB_NAME}?charset=utf8mb4"
         )
 
-    # Engine options for connection pooling and health checks
-    SQLALCHEMY_ENGINE_OPTIONS = {
-        'pool_recycle': 280,
-        'pool_pre_ping': True,
-    }
+    # Engine options for connection pooling and health checks (disabled for SQLite)
+    if custom_db_url and custom_db_url.startswith('sqlite'):
+        SQLALCHEMY_ENGINE_OPTIONS = {}
+    else:
+        SQLALCHEMY_ENGINE_OPTIONS = {
+            'pool_recycle': 280,
+            'pool_pre_ping': True,
+        }
+
+    # Session cookie security
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
 
 
 class DevelopmentConfig(Config):
@@ -56,7 +68,8 @@ class TestingConfig(Config):
 class ProductionConfig(Config):
     """Production environment configuration."""
     DEBUG = False
-    ALLOW_SQLITE_FALLBACK = False
+    ALLOW_SQLITE_FALLBACK = os.getenv('ALLOW_SQLITE_FALLBACK', 'False').lower() in ('true', '1', 't', 'yes')
+    SESSION_COOKIE_SECURE = os.getenv('SESSION_COOKIE_SECURE', 'False').lower() in ('true', '1', 't', 'yes')
 
 
 config_by_name = {

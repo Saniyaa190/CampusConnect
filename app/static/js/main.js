@@ -65,12 +65,31 @@ document.addEventListener('DOMContentLoaded', () => {
     confirmBtn.onclick = handleConfirm;
   };
 
+  // Delegated click handler for elements with data-confirm-form (prevents string escaping bugs)
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-confirm-form]');
+    if (btn) {
+      e.preventDefault();
+      const title = btn.getAttribute('data-confirm-title') || 'Confirm Action';
+      const message = btn.getAttribute('data-confirm-message') || 'Are you sure you wish to proceed with this action?';
+      const formId = btn.getAttribute('data-confirm-form');
+      openConfirmModal(title, message, formId);
+    }
+  });
+
   window.closeConfirmModal = function() {
     const modal = document.getElementById('confirmModal');
     if (modal) {
       modal.classList.remove('active');
     }
   };
+
+  // Close modal when pressing Escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeConfirmModal();
+    }
+  });
 
   // Close modal when clicking on backdrop
   const modal = document.getElementById('confirmModal');

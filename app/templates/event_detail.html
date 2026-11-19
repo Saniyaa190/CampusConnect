@@ -110,7 +110,9 @@
                   <button 
                     type="button" 
                     class="btn btn-outline-danger btn-block" 
-                    onclick="openConfirmModal('Cancel Registration', 'Are you sure you want to cancel your registration for this event? Your seat will be freed up for other students.', 'cancelRegForm')"
+                    data-confirm-title="Cancel Registration"
+                    data-confirm-message="Are you sure you want to cancel your registration for '{{ event.title }}'? Your seat will be freed up for other students."
+                    data-confirm-form="cancelRegForm"
                     id="cancelRegistrationBtn"
                   >
                     Cancel Registration

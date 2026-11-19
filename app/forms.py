@@ -44,6 +44,8 @@ class SignupForm(FlaskForm):
 
     def validate_email(self, field):
         """Ensure email is unique across all users."""
+        if not field.data:
+            return
         normalized_email = field.data.strip().lower()
         if User.query.filter_by(email=normalized_email).first():
             raise ValidationError("An account with this email address already exists. Please log in.")
@@ -107,7 +109,7 @@ class EventForm(FlaskForm):
     start_time = TimeField(
         'Start Time',
         validators=[DataRequired(message="Start time is required.")],
-        format='%H:%M'
+        format=['%H:%M', '%H:%M:%S']
     )
     capacity = IntegerField(
         'Total Seat Capacity',

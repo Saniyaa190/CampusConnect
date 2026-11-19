@@ -85,7 +85,9 @@
                         <button 
                           type="button" 
                           class="btn btn-outline-danger btn-sm"
-                          onclick="openConfirmModal('Cancel Booking', 'Are you sure you want to cancel your seat for {{ event.title }}? This action frees your seat for other students.', 'cancelForm_{{ reg.id }}')"
+                          data-confirm-title="Cancel Booking"
+                          data-confirm-message="Are you sure you want to cancel your seat for '{{ event.title }}'? This action frees your seat for other students."
+                          data-confirm-form="cancelForm_{{ reg.id }}"
                         >
                           Cancel
                         </button>

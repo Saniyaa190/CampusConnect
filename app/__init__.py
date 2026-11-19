@@ -7,8 +7,22 @@ from app.extensions import db, migrate, login_manager, csrf
 from config import config_by_name
 
 
-def test_mysql_connectivity(host, port, user, password, db_name):
-    """Test whether MySQL is reachable with provided credentials."""
+def test_database_connectivity(uri, host='localhost', port=3306, user='root', password='', db_name='campusconnect'):
+    """Test whether target database is reachable before initializing SQLAlchemy."""
+    # If custom DATABASE_URL was provided, test that URI directly with short timeout
+    if os.getenv('DATABASE_URL'):
+        try:
+            from sqlalchemy import create_engine, text
+            connect_args = {'connect_timeout': 3} if 'mysql' in uri else {}
+            engine = create_engine(uri, connect_args=connect_args)
+            with engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+            engine.dispose()
+            return True, "Connected successfully"
+        except Exception as e:
+            return False, str(e)
+
+    # Standard local MySQL socket check
     try:
         conn = pymysql.connect(
             host=host,
@@ -32,8 +46,11 @@ def create_app(config_name='default'):
     config_obj = config_by_name.get(config_name, config_by_name['default'])
     app.config.from_object(config_obj)
 
-    # Ensure instance folder exists
-    os.makedirs(app.instance_path, exist_ok=True)
+    # Ensure instance folder exists (safe against read-only serverless filesystems)
+    try:
+        os.makedirs(app.instance_path, exist_ok=True)
+    except OSError:
+        pass
 
     # Verify and configure database engine before initializing SQLAlchemy
     if not app.config.get('TESTING'):
@@ -45,10 +62,16 @@ def create_app(config_name='default'):
             password = app.config.get('DB_PASSWORD', '')
             db_name = app.config.get('DB_NAME', 'campusconnect')
 
-            can_connect, err_msg = test_mysql_connectivity(host, port, user, password, db_name)
+            can_connect, err_msg = test_database_connectivity(db_uri, host, port, user, password, db_name)
             if not can_connect:
                 if app.config.get('ALLOW_SQLITE_FALLBACK', True):
-                    sqlite_path = os.path.join(app.instance_path, 'campusconnect.db')
+                    # In serverless environments (like Vercel), instance folder is read-only
+                    is_serverless = bool(os.getenv('VERCEL') or os.getenv('AWS_LAMBDA_FUNCTION_NAME'))
+                    if is_serverless or not os.access(app.instance_path if os.path.exists(app.instance_path) else '.', os.W_OK):
+                        sqlite_path = '/tmp/campusconnect.db'
+                    else:
+                        sqlite_path = os.path.join(app.instance_path, 'campusconnect.db')
+
                     app.logger.warning(
                         f"MySQL connection unavailable ({err_msg}). Falling back to local SQLite: {sqlite_path}"
                     )
@@ -89,6 +112,14 @@ def create_app(config_name='default'):
     def internal_error(error):
         db.session.rollback()
         return render_template('errors/500.html', title="Server Error — CampusConnect"), 500
+
+    # Security response headers
+    @app.after_request
+    def set_security_headers(response):
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+        response.headers['X-XSS-Protection'] = '1; mode=block'
+        return response
 
     # Context processors
     @app.context_processor

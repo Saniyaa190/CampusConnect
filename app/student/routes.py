@@ -1,6 +1,6 @@
 from functools import wraps
 from datetime import date
-from flask import render_template, redirect, url_for, flash, abort
+from flask import render_template, redirect, url_for, flash
 from flask_login import login_required, current_user
 from app.student import student_bp
 from app.models import Registration, Event

@@ -1,4 +1,4 @@
-from datetime import date, time, timedelta, datetime, timezone
+from datetime import date, time, timedelta
 import pytest
 from app import create_app
 from app.extensions import db

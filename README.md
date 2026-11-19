@@ -244,6 +244,40 @@ python -m pytest -v
 
 ---
 
+## 🌐 Production Deployment Guide
+
+CampusConnect is pre-configured and tested for zero-downtime deployment on major cloud hosting platforms:
+
+### A. Deploying on Vercel via GitHub (Serverless)
+1. **Push your code to GitHub**:
+   ```bash
+   git add .
+   git commit -m "Prepare production deployment"
+   git push origin main
+   ```
+2. **Import repository into Vercel**:
+   - Go to [vercel.com](https://vercel.com) and click **"Add New Project"**.
+   - Select your GitHub repository.
+   - Framework Preset: **Other** (Vercel automatically detects `vercel.json` and `@vercel/python`).
+   - Root Directory: `./` (Leave as default).
+3. **Configure Environment Variables in Vercel Project Settings**:
+   - `SECRET_KEY`: A strong random string (e.g., `openssl rand -hex 32`).
+   - `FLASK_ENV`: `production`
+   - `ALLOW_SQLITE_FALLBACK`: Set to `True` for instant zero-database testing (uses `/tmp/campusconnect.db`) or provide `DATABASE_URL` for managed MySQL/PostgreSQL.
+   - `DATABASE_URL` *(Recommended for production)*: Connection string to your cloud MySQL or PostgreSQL instance (e.g., TiDB, Aiven, Supabase, Neon, Railway).
+4. **Deploy**: Click **"Deploy"**. The app will be live with full routing and static assets handled seamlessly via `api/index.py` and `vercel.json`.
+
+### B. Deploying on Render or Railway (Container / WSGI)
+1. Connect your GitHub repository to Render or Railway.
+2. The platform automatically detects `Procfile` (`web: gunicorn wsgi:app`) and installs `requirements.txt`.
+3. Set environment variables:
+   - `SECRET_KEY`: Your production secret key.
+   - `FLASK_ENV`: `production`
+   - `DATABASE_URL`: Your managed MySQL or PostgreSQL database URI.
+   - `PORT`: Handled automatically by the host (defaults to `5000` locally).
+
+---
+
 ## 🎓 College Viva Examination & Technical Defense Guide
 
 This section is prepared specifically to help 2nd-year B.Tech CSE students answer technical questions from external examiners during project viva presentations:
