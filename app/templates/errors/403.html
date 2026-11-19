@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container" style="padding: 5rem 1.5rem; text-align: center; max-width: 640px;">
+  <div style="font-size: 4.5rem; line-height: 1; margin-bottom: 1rem;">🔒</div>
+  <span class="badge-cat Cultural" style="margin-bottom: 0.75rem; display: inline-block;">Error 403</span>
+  <h1 style="font-size: 2.5rem; color: var(--primary-purple); margin-bottom: 1rem;">Access Forbidden</h1>
+  <p style="font-size: 1.1rem; color: var(--color-slate); line-height: 1.6; margin-bottom: 2rem;">
+    You do not possess the necessary administrative privileges or permissions to access this protected area.
+  </p>
+  <div style="display: flex; justify-content: center; gap: 1rem;">
+    <a href="{{ url_for('main.home') }}" class="btn btn-primary">Return Home</a>
+    {% if current_user.is_authenticated and current_user.is_student %}
+      <a href="{{ url_for('student.dashboard') }}" class="btn btn-outline">Go to Student Hub</a>
+    {% else %}
+      <a href="{{ url_for('auth.login') }}" class="btn btn-outline">Sign In as Admin</a>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

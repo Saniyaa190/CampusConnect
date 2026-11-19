@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ title if title else "CampusConnect — College Event Management System" }}</title>
+  <meta name="description" content="Discover upcoming college events, workshops, cultural fests, hackathons, and sports meets on CampusConnect.">
+  
+  <!-- Modern Typography: Google Fonts Outfit & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+  <!-- Top Navigation Bar -->
+  <nav class="navbar" id="mainNavbar">
+    <div class="container nav-wrapper">
+      <a href="{{ url_for('main.home') }}" class="brand" id="brandLogo">
+        <div class="brand-icon">C</div>
+        <span>Campus<span class="accent">Connect</span></span>
+      </a>
+
+      <!-- Desktop Nav Links -->
+      <ul class="nav-links" id="navLinks">
+        <li class="nav-item">
+          <a href="{{ url_for('main.home') }}" class="{{ 'active' if request.endpoint == 'main.home' else '' }}" id="navHome">Home</a>
+        </li>
+        <li class="nav-item">
+          <a href="{{ url_for('events.index') }}" class="{{ 'active' if request.endpoint == 'events.index' else '' }}" id="navEvents">Events</a>
+        </li>
+        <li class="nav-item">
+          <a href="{{ url_for('main.about') }}" class="{{ 'active' if request.endpoint == 'main.about' else '' }}" id="navAbout">About</a>
+        </li>
+
+        {% if current_user.is_authenticated %}
+          {% if current_user.is_student %}
+            <li class="nav-item">
+              <a href="{{ url_for('student.dashboard') }}" class="{{ 'active' if request.endpoint == 'student.dashboard' else '' }}" id="navStudentDashboard">Dashboard</a>
+            </li>
+            <li class="nav-item">
+              <a href="{{ url_for('student.registrations') }}" class="{{ 'active' if request.endpoint == 'student.registrations' else '' }}" id="navStudentRegistrations">My Registrations</a>
+            </li>
+          {% elif current_user.is_admin %}
+            <li class="nav-item">
+              <a href="{{ url_for('admin.dashboard') }}" class="{{ 'active' if request.endpoint == 'admin.dashboard' else '' }}" id="navAdminDashboard">Admin Dashboard</a>
+            </li>
+            <li class="nav-item">
+              <a href="{{ url_for('admin.create_event') }}" class="{{ 'active' if request.endpoint == 'admin.create_event' else '' }}" id="navAdminCreateEvent">+ New Event</a>
+            </li>
+          {% endif %}
+          <li class="nav-item">
+            <a href="{{ url_for('auth.logout') }}" id="navLogout">Sign Out</a>
+          </li>
+        {% else %}
+          <li class="nav-item">
+            <a href="{{ url_for('auth.login') }}" class="{{ 'active' if request.endpoint == 'auth.login' else '' }}" id="navLogin">Sign In</a>
+          </li>
+          <li class="nav-item">
+            <a href="{{ url_for('auth.signup') }}" class="btn btn-teal btn-sm" id="navSignup">Sign Up</a>
+          </li>
+        {% endif %}
+      </ul>
+
+      <!-- User Status / Quick Actions -->
+      <div class="nav-actions">
+        {% if current_user.is_authenticated %}
+          <div class="nav-user">
+            <span>{{ current_user.full_name }}</span>
+            <span class="user-badge {{ 'admin' if current_user.is_admin else 'student' }}">
+              {{ current_user.role }}
+            </span>
+          </div>
+          <a href="{{ url_for('auth.logout') }}" class="btn btn-outline btn-sm">Logout</a>
+        {% else %}
+          <a href="{{ url_for('auth.login') }}" class="btn btn-outline btn-sm">Log In</a>
+          <a href="{{ url_for('auth.signup') }}" class="btn btn-teal btn-sm">Get Started</a>
+        {% endif %}
+      </div>
+
+      <!-- Mobile Menu Toggle Button -->
+      <button class="mobile-toggle" id="mobileToggle" aria-label="Toggle Navigation">
+        ☰
+      </button>
+    </div>
+  </nav>
+
+  <!-- Global Flash Alerts Container -->
+  <div class="container flash-container" id="flashContainer">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category if category != 'error' else 'danger' }}" role="alert">
+            <span>{{ message }}</span>
+            <button class="alert-close" aria-label="Close notification">&times;</button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+  </div>
+
+  <!-- Main Body Content Block -->
+  <main class="main-content" id="mainContent">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Reusable Confirmation Modal -->
+  <div class="modal-overlay" id="confirmModal">
+    <div class="modal-dialog">
+      <h3 class="modal-title" id="modalTitle">Confirm Action</h3>
+      <p id="modalMessage">Are you sure you wish to proceed with this action?</p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-outline btn-sm" onclick="closeConfirmModal()">Cancel</button>
+        <button type="button" class="btn btn-danger btn-sm" id="modalConfirmBtn">Proceed</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container footer-grid">
+      <div class="footer-brand">
+        <div class="brand">
+          <div class="brand-icon">C</div>
+          <span>Campus<span class="accent">Connect</span></span>
+        </div>
+        <p>Your Campus. Your Community. Connecting students with vibrant collegiate events, competitions, workshops, and extracurricular activities.</p>
+      </div>
+
+      <div class="footer-nav">
+        <h4 class="footer-title">Explore</h4>
+        <ul class="footer-links">
+          <li><a href="{{ url_for('main.home') }}">Home</a></li>
+          <li><a href="{{ url_for('events.index') }}">Browse All Events</a></li>
+          <li><a href="{{ url_for('events.index', filter='upcoming') }}">Upcoming Activities</a></li>
+          <li><a href="{{ url_for('main.about') }}">About CampusConnect</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-nav">
+        <h4 class="footer-title">Account & Portal</h4>
+        <ul class="footer-links">
+          {% if current_user.is_authenticated %}
+            {% if current_user.is_student %}
+              <li><a href="{{ url_for('student.dashboard') }}">Student Dashboard</a></li>
+              <li><a href="{{ url_for('student.registrations') }}">My Registered Events</a></li>
+            {% else %}
+              <li><a href="{{ url_for('admin.dashboard') }}">Administrator Console</a></li>
+              <li><a href="{{ url_for('admin.create_event') }}">Schedule Event</a></li>
+            {% endif %}
+            <li><a href="{{ url_for('auth.logout') }}">Sign Out</a></li>
+          {% else %}
+            <li><a href="{{ url_for('auth.login') }}">Student / Admin Sign In</a></li>
+            <li><a href="{{ url_for('auth.signup') }}">Create Student Account</a></li>
+          {% endif %}
+        </ul>
+      </div>
+    </div>
+
+    <div class="container footer-bottom">
+      <div>&copy; {{ current_year }} CampusConnect — College Event Management System. Built for B.Tech CSE.</div>
+      <div>Python • Flask • MySQL 8 • SQLAlchemy</div>
+    </div>
+  </footer>
+
+  <!-- Main JavaScript File -->
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>
