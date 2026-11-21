@@ -5,6 +5,7 @@ from app import create_app
 # Create application instance using environment configuration
 env_name = os.getenv('FLASK_ENV', 'development')
 app = create_app(env_name)
+application = app
 
 if __name__ == '__main__':
     # Allow passing CLI arguments like 'seed-events' or 'create-admin' directly through run.py
