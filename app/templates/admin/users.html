@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Users - CampusConnect Admin{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 pb-2 border-bottom">
+    <div>
+      <h2 class="fw-bold mb-1">User Account Directory</h2>
+      <p class="text-secondary mb-0">Oversee student and organizer profiles, assign privileges, and manage roles.</p>
+    </div>
+  </div>
+
+  <!-- Filter Bar -->
+  <div class="card-modern p-3 mb-4 shadow-sm bg-white">
+    <form method="GET" action="{{ url_for('admin.manage_users') }}">
+      <div class="row g-2 align-items-center">
+        <div class="col-md-6">
+          <div class="input-group">
+            <span class="input-group-text bg-light border-end-0"><i class="bi bi-search text-muted"></i></span>
+            <input type="text" name="q" class="form-control border-start-0" placeholder="Search by name or email..." value="{{ search }}">
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <select name="role" class="form-select">
+            <option value="all" {% if role_filter == 'all' %}selected{% endif %}>All Roles</option>
+            <option value="student" {% if role_filter == 'student' %}selected{% endif %}>Students</option>
+            <option value="organizer" {% if role_filter == 'organizer' %}selected{% endif %}>Event Organizers</option>
+            <option value="admin" {% if role_filter == 'admin' %}selected{% endif %}>Administrators</option>
+          </select>
+        </div>
+
+        <div class="col-md-2 d-grid">
+          <button type="submit" class="btn btn-primary-indigo">Filter</button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  {% if users and users|length > 0 %}
+    <div class="card-modern shadow-sm overflow-hidden">
+      <div class="table-responsive">
+        <table class="table table-modern table-hover mb-0">
+          <thead>
+            <tr>
+              <th>User Name & Email</th>
+              <th>Current Role</th>
+              <th>Department</th>
+              <th>Academic Year</th>
+              <th>Joined Date</th>
+              <th class="text-end">Manage Role & Access</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for u in users %}
+              <tr>
+                <td>
+                  <div class="d-flex align-items-center gap-2">
+                    <div class="rounded-circle bg-light border text-primary fw-bold d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+                      {{ u.name[0]|upper }}
+                    </div>
+                    <div>
+                      <div class="fw-bold">{{ u.name }}</div>
+                      <small class="text-muted">{{ u.email }}</small>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <span class="badge {% if u.role == 'admin' %}bg-dark text-white{% elif u.role == 'organizer' %}bg-primary text-white{% else %}bg-secondary-subtle text-secondary{% endif %} px-2 py-1 text-uppercase">
+                    {{ u.role }}
+                  </span>
+                </td>
+                <td>
+                  <span class="small">{{ u.department or 'General' }}</span>
+                </td>
+                <td>
+                  <span class="small text-muted">{{ u.year or 'N/A' }}</span>
+                </td>
+                <td>
+                  <span class="small text-muted">{{ u.created_at.strftime('%b %d, %Y') }}</span>
+                </td>
+                <td class="text-end text-nowrap">
+                  {% if u.id != current_user.id %}
+                    <!-- Role Switch Form -->
+                    <form action="{{ url_for('admin.toggle_user_role', user_id=u.id) }}" method="POST" class="d-inline-flex gap-1 align-items-center me-2">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                      <select name="new_role" class="form-select form-select-sm" style="width: 120px;" onchange="this.form.submit()">
+                        <option value="student" {% if u.role == 'student' %}selected{% endif %}>Student</option>
+                        <option value="organizer" {% if u.role == 'organizer' %}selected{% endif %}>Organizer</option>
+                        <option value="admin" {% if u.role == 'admin' %}selected{% endif %}>Admin</option>
+                      </select>
+                    </form>
+
+                    <form action="{{ url_for('admin.delete_user', user_id=u.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this user account? All their registrations/events will be removed.');">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                      <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete User">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </form>
+                  {% else %}
+                    <span class="badge bg-light text-muted border">Current Admin</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% else %}
+    <div class="card-modern p-5 text-center my-4">
+      <i class="bi bi-person-x text-muted fs-2 mb-2"></i>
+      <h4 class="fw-bold">No users match query</h4>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

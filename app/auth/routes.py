@@ -1,82 +1,104 @@
-from urllib.parse import urlsplit
-from flask import render_template, redirect, url_for, flash, request
-from flask_login import login_user, logout_user, current_user, login_required
-from app.auth import auth_bp
+from flask import Blueprint, render_template, redirect, url_for, flash, request
+from flask_login import login_user, logout_user, login_required, current_user
 from app.extensions import db
 from app.models import User
-from app.forms import LoginForm, SignupForm
+from app.forms import LoginForm, RegisterForm, ProfileForm
+from app.utils import send_notification
 
+auth_bp = Blueprint("auth", __name__)
 
-def is_safe_url(target):
-    """Ensure redirect URL belongs to this domain and is safe to prevent open redirects."""
-    if not target:
-        return False
-    ref_url = urlsplit(request.host_url)
-    test_url = urlsplit(target)
-
-    # If an absolute URL with scheme is provided, verify scheme and host match
-    if test_url.scheme:
-        return test_url.scheme in ('http', 'https') and ref_url.netloc == test_url.netloc
-
-    # Relative path validation: must start with single '/', avoid protocol-relative '//', and prevent backslashes
-    return target.startswith('/') and not target.startswith('//') and '\\' not in target
-
-
-@auth_bp.route('/signup', methods=['GET', 'POST'])
-def signup():
-    """Student account registration."""
+@auth_bp.route("/login", methods=["GET", "POST"])
+def login():
     if current_user.is_authenticated:
-        return redirect(url_for('student.dashboard' if current_user.is_student else 'admin.dashboard'))
+        if current_user.is_admin:
+            return redirect(url_for("admin.dashboard"))
+        elif current_user.is_organizer:
+            return redirect(url_for("organizer.dashboard"))
+        return redirect(url_for("student.dashboard"))
 
-    form = SignupForm()
+    form = LoginForm()
+    if form.validate_on_submit():
+        user = User.query.filter_by(email=form.email.data.strip().lower()).first()
+        if user and user.check_password(form.password.data):
+            login_user(user, remember=form.remember.data)
+            flash(f"Welcome back, {user.name}!", "success")
+            
+            next_page = request.args.get("next")
+            if next_page and next_page.startswith("/"):
+                return redirect(next_page)
+            
+            if user.is_admin:
+                return redirect(url_for("admin.dashboard"))
+            elif user.is_organizer:
+                return redirect(url_for("organizer.dashboard"))
+            else:
+                return redirect(url_for("student.dashboard"))
+        else:
+            flash("Invalid email or password. Please try again.", "danger")
+
+    return render_template("auth/login.html", form=form)
+
+
+@auth_bp.route("/register", methods=["GET", "POST"])
+def register():
+    if current_user.is_authenticated:
+        return redirect(url_for("index"))
+
+    form = RegisterForm()
     if form.validate_on_submit():
         user = User(
-            full_name=form.full_name.data.strip(),
+            name=form.name.data.strip(),
             email=form.email.data.strip().lower(),
-            role='STUDENT'
+            role=form.role.data,
+            department=form.department.data,
+            year=form.year.data if form.role.data == "student" else "Faculty / Staff"
         )
         user.set_password(form.password.data)
         db.session.add(user)
         db.session.commit()
 
-        flash("Account created successfully! Please sign in with your credentials.", "success")
-        return redirect(url_for('auth.login'))
+        # Send welcome notification
+        send_notification(
+            user.id,
+            "Welcome to CampusConnect!",
+            f"Hello {user.name}, your account as a {user.role.capitalize()} has been successfully created. Explore events and get involved!"
+        )
+        db.session.commit()
 
-    return render_template('signup.html', form=form, title="Sign Up — CampusConnect")
+        flash("Registration successful! You can now log in.", "success")
+        return redirect(url_for("auth.login"))
 
-
-@auth_bp.route('/login', methods=['GET', 'POST'])
-def login():
-    """User authentication for Students and Administrators."""
-    if current_user.is_authenticated:
-        return redirect(url_for('student.dashboard' if current_user.is_student else 'admin.dashboard'))
-
-    form = LoginForm()
-    if form.validate_on_submit():
-        email = form.email.data.strip().lower()
-        user = User.query.filter_by(email=email).first()
-
-        if user and user.check_password(form.password.data):
-            login_user(user, remember=form.remember_me.data)
-            flash(f"Welcome back, {user.full_name}!", "success")
-
-            next_page = request.args.get('next')
-            if next_page and is_safe_url(next_page):
-                return redirect(next_page)
-
-            if user.is_admin:
-                return redirect(url_for('admin.dashboard'))
-            return redirect(url_for('student.dashboard'))
-        else:
-            flash("Invalid email or password. Please verify your credentials and try again.", "danger")
-
-    return render_template('login.html', form=form, title="Sign In — CampusConnect")
+    return render_template("auth/register.html", form=form)
 
 
-@auth_bp.route('/logout')
+@auth_bp.route("/logout")
 @login_required
 def logout():
-    """Log out authenticated user."""
     logout_user()
-    flash("You have been signed out successfully.", "info")
-    return redirect(url_for('main.home'))
+    flash("You have been successfully logged out.", "info")
+    return redirect(url_for("index"))
+
+
+@auth_bp.route("/profile", methods=["GET", "POST"])
+@login_required
+def profile():
+    form = ProfileForm(obj=current_user)
+    if form.validate_on_submit():
+        # Verify current password if user wants to change password
+        if form.new_password.data:
+            if not form.current_password.data or not current_user.check_password(form.current_password.data):
+                flash("Current password is incorrect. Password was not changed.", "danger")
+                return render_template("auth/profile.html", form=form)
+            current_user.set_password(form.new_password.data)
+            flash("Password updated successfully.", "info")
+
+        current_user.name = form.name.data.strip()
+        current_user.department = form.department.data
+        if current_user.is_student:
+            current_user.year = form.year.data
+
+        db.session.commit()
+        flash("Your profile has been updated.", "success")
+        return redirect(url_for("auth.profile"))
+
+    return render_template("auth/profile.html", form=form)

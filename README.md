@@ -1,330 +1,374 @@
-# CampusConnect — College Event Management System
+# CampusConnect - College Event Management Web Application
+> *"Your Campus. Your Events. Your Community."*
 
-> **Your Campus. Your Community.**  
-> *A full-stack, web-based college event management platform built using Python, Flask, Jinja2, and MySQL 8.*
-
-Designed specifically for academic project evaluations, live lab demonstrations, technical viva examinations, and software developer portfolios.
-
----
-
-## 📌 Project Overview
-
-College campuses frequently struggle with fragmented event communication. Announcements, schedules, venue details, and registration forms are scattered across paper notice boards, WhatsApp groups, and unstructured spreadsheets.
-
-**CampusConnect** solves this challenge by providing a centralized platform where:
-- **Students** can discover upcoming hackathons, cultural festivals, sports tournaments, workshops, and guest seminars, register with a single click, monitor seat availability in real time, and manage or cancel their bookings.
-- **Administrators** can create, update, and manage college events, track real-time venue capacity and occupancy rates, access student participant rosters, and prevent overbooking.
+[![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue.svg)](https://www.python.org/)
+[![Flask](https://img.shields.io/badge/Flask-3.1.3-black.svg)](https://flask.palletsprojects.com/)
+[![SQLite](https://img.shields.io/badge/Database-SQLite%20%2F%20SQLAlchemy-green.svg)](https://www.sqlalchemy.org/)
+[![Bootstrap](https://img.shields.io/badge/Bootstrap-5.3-purple.svg)](https://getbootstrap.com/)
+[![Tests](https://img.shields.io/badge/Tests-15%20Passed-brightgreen.svg)](https://docs.pytest.org/)
 
 ---
 
-## 🛠️ Technology Stack
+## 1. Project Introduction
 
-| Component | Technology | Rationale |
-| :--- | :--- | :--- |
-| **Primary Language** | **Python 3.12+** (tested on Python 3.13) | Clean, readable, robust language suitable for modern backend development. |
-| **Web Framework** | **Flask** | Lightweight, modular Python microframework utilizing the Application Factory Pattern. |
-| **Database** | **MySQL 8** (with SQLite fallback) | Production-grade relational database with ACID transactions, indexing, and foreign keys. |
-| **ORM** | **Flask-SQLAlchemy** | Pythonic Object-Relational Mapping with cascading deletes and relationship querying. |
-| **Database Migrations** | **Flask-Migrate / Alembic** | Tracks and applies database schema migrations safely. |
-| **Authentication** | **Flask-Login** | Session-based authentication, user loader hooks, and protected route handlers. |
-| **Password Hashing** | **Werkzeug** | Salted SHA-256 / PBKDF2 one-way password hashing (never plaintext). |
-| **Forms & CSRF** | **Flask-WTF & WTForms** | Server-side form validation, sanitized input fields, and CSRF token verification. |
-| **Environment Config**| **python-dotenv** | Securely loads credentials and runtime variables from `.env`. |
-| **Testing Suite** | **pytest** | Automated test suite with test client fixtures and isolated in-memory SQLite database. |
-| **Frontend Styling** | **Vanilla CSS3 & Jinja2** | Custom, responsive design system with a tailored color palette and smooth micro-animations. |
+**CampusConnect** is a centralized college event management web application developed from scratch as a practical full-stack engineering project. It eliminates scattered event announcements, chaotic registration processes, paper notices, and uncoordinated communication across academic departments, student clubs, and college administration.
+
+The application brings students, event organizers, and college administrators into a unified digital workspace featuring secure authentication, strict Role-Based Access Control (RBAC), multi-criteria event discovery, real-time seat tracking, automated capacity limits, check-in attendance management, CSV reporting, and in-app notifications.
 
 ---
 
-## 🎨 Design System & Color Palette
+## 2. Problem Statement & Objectives
 
-CampusConnect uses an intentional, high-contrast, modern collegiate palette:
-- **Deep Purple** (`#37306B`): Primary brand color, headers, navigation.
-- **Teal** (`#2A9D8F`): Accent buttons, active highlights, success badges.
-- **Light Cream** (`#FAF9F6`): Neutral background color for reduced eye strain.
-- **Warm Yellow** (`#F4C95D`): Spotlight tags, warning alerts, admin badges.
-- **Pure White** (`#FFFFFF`): Elevated card and container surfaces.
-- **Typography**: Google Fonts (*Outfit* for bold headings, *Inter* for legible body content).
+### The Problem
+* **Fragmented Announcements:** College events are traditionally announced over disparate WhatsApp groups, paper notice boards, and unorganized email threads.
+* **Manual Registrations:** Google Forms or paper sheets lead to duplicate registrations, exceeding hall capacities, and manual tallying errors.
+* **Lack of Accountability:** Difficult to track actual attendee turnouts, no standard attendance check-ins, and absence of historical participation records.
+* **Administrative Overhead:** College authorities have no single dashboard to review, approve, moderate, or analyze student engagement across campus.
+
+### Core Objectives
+1. **Centralize:** Provide a single source of truth for all campus technical, cultural, sports, and academic activities.
+2. **Automate:** Enforce automated capacity constraints, duplicate registration checks, and deadline validations at the database and application level.
+3. **Empower Organizers:** Give student clubs and faculty organizers intuitive tools to publish events, track enrollments in real time, mark digital attendance, and export participant data.
+4. **Oversee Governance:** Provide college leadership with moderation controls and Chart.js analytics on student participation and category distributions.
 
 ---
 
-## 📂 Project Architecture & Directory Structure
+## 3. System Architecture
 
-```text
-cc/
-├── app/
-│   ├── __init__.py           # Application Factory, error handlers, and custom CLI commands
-│   ├── extensions.py         # Extension initialization (SQLAlchemy, Migrate, LoginManager, CSRF)
-│   ├── models.py             # User, Event, and Registration database models
-│   ├── forms.py              # WTForms classes (Signup, Login, EventForm, EmptyForm)
-│   ├── auth/                 # Student and Admin authentication blueprint
-│   │   ├── __init__.py
-│   │   └── routes.py         # /signup, /login, /logout
-│   ├── main/                 # Public pages blueprint
-│   │   ├── __init__.py
-│   │   └── routes.py         # / (homepage with stats & featured events), /about
-│   ├── events/               # Event browsing, details, and registration blueprint
-│   │   ├── __init__.py
-│   │   └── routes.py         # /events, /events/<id>, /events/<id>/register, /events/<id>/cancel
-│   ├── student/              # Student dashboard & registration management blueprint
-│   │   ├── __init__.py
-│   │   └── routes.py         # /student/dashboard, /student/registrations
-│   ├── admin/                # Administrator management console blueprint
-│   │   ├── __init__.py
-│   │   └── routes.py         # /admin/dashboard, create/edit/delete event, participant rosters
-│   ├── templates/            # Jinja2 HTML templates
-│   │   ├── base.html         # Master layout with responsive navbar, alerts, modal, footer
-│   │   ├── home.html         # Landing page with hero, live counters, and category pills
-│   │   ├── about.html        # System overview and college viva reference
-│   │   ├── signup.html       # Student account registration
-│   │   ├── login.html        # Student and Admin login
-│   │   ├── events.html       # Searchable and filterable events directory
-│   │   ├── event_detail.html # Event details, live capacity bar, and register/cancel actions
-│   │   ├── student_dashboard.html # Student hub with active bookings and statistics
-│   │   ├── my_registrations.html  # Student registration history with cancellation controls
-│   │   ├── admin_dashboard.html   # Admin console with capacity analytics and master event roster
-│   │   ├── create_event.html # Admin event scheduling form
-│   │   ├── edit_event.html   # Admin event modification form with capacity guard
-│   │   ├── event_participants.html # Registered student roster per event
-│   │   └── errors/
-│   │       ├── 403.html      # Access Denied / Forbidden
-│   │       ├── 404.html      # Resource Not Found
-│   │       └── 500.html      # Internal Server Error
-│   └── static/
-│       ├── css/
-│       │   └── style.css     # CSS custom properties, grid layouts, cards, and UI components
-│       └── js/
-│           └── main.js       # Mobile navigation toggle, toast dismissals, and confirmation modals
-├── tests/                    # Automated Pytest Suite
-│   ├── __init__.py
-│   ├── conftest.py           # In-memory test database, client, and user/event fixtures
-│   ├── test_auth.py          # Authentication, password hashing, and role security tests
-│   ├── test_events.py        # Event browsing, category filters, and admin CRUD tests
-│   └── test_registrations.py # Booking constraints, capacity limits, and cancellations tests
-├── config.py                 # Application configuration profiles (Dev, Test, Prod)
-├── run.py                    # Server launch script & CLI entry point
-├── requirements.txt          # Python dependency specifications
-├── .env.example              # Environment variables template
-├── .env                      # Local environment configuration
-├── .gitignore                # Git ignore patterns for Python, venvs, and secrets
-└── README.md                 # Complete documentation and viva guide
+CampusConnect follows a clean Model-View-Controller (MVC) architectural pattern leveraging Flask Blueprints for modular route segregation.
+
+```mermaid
+flowchart TD
+    Client["Browser Client (HTML5 / Bootstrap 5 / Chart.js)"]
+    
+    subgraph AppServer ["Flask Application Core (run.py)"]
+        AuthBP["Auth Blueprint (/auth)"]
+        StudentBP["Student Blueprint (/student)"]
+        OrganizerBP["Organizer Blueprint (/organizer)"]
+        AdminBP["Admin Blueprint (/admin)"]
+        EventsBP["Events Blueprint (/events)"]
+        NotifBP["Notifications Blueprint (/notifications)"]
+        
+        RBAC["RBAC & Security Decorators (@role_required)"]
+        CSRF["Flask-WTF CSRF Protection"]
+    end
+    
+    subgraph DataLayer ["Data & Storage Layer"]
+        ORM["SQLAlchemy ORM (app.models)"]
+        DB[("SQLite Database (campusconnect.db)")]
+        Uploads["Static Uploads (/static/uploads/)"]
+    end
+
+    Client <-->|HTTPS Requests / HTML & JSON| AppServer
+    AppServer --> RBAC
+    RBAC --> ORM
+    ORM <--> DB
+    AppServer --> Uploads
 ```
 
 ---
 
-## 🚀 Setup & Execution Guide (Windows PowerShell)
+## 4. Database Schema & Entity Relationships
 
-Follow these exact steps in your Windows terminal:
+The data model uses SQLAlchemy ORM with foreign key cascades, indexes, and a unique constraint preventing duplicate student registrations (`uq_student_event`).
 
-### 1. Clone or Open the Project
+```mermaid
+erDiagram
+    User ||--o{ Event : "organizes"
+    User ||--o{ Registration : "registers for"
+    User ||--o{ Notification : "receives"
+    User ||--o{ EventAttendance : "marked by"
+    Event ||--o{ Registration : "has enrollments"
+    Event ||--o{ EventAttendance : "tracks"
+
+    User {
+        int id PK
+        string name
+        string email UK
+        string password_hash
+        string role "student | organizer | admin"
+        string department
+        string year
+        datetime created_at
+    }
+
+    Event {
+        int id PK
+        string title
+        text description
+        string category
+        date event_date
+        time start_time
+        time end_time
+        string venue
+        int capacity
+        date registration_deadline
+        string eligibility
+        string contact_email
+        string image
+        int organizer_id FK
+        string approval_status "pending | approved | rejected"
+        datetime created_at
+    }
+
+    Registration {
+        int id PK
+        int student_id FK
+        int event_id FK
+        datetime registration_date
+        string registration_status "confirmed | cancelled"
+        string attendance_status "not_attended | attended"
+    }
+
+    Notification {
+        int id PK
+        int user_id FK
+        string title
+        text message
+        boolean is_read
+        datetime created_at
+    }
+
+    EventAttendance {
+        int id PK
+        int event_id FK
+        int student_id FK
+        int marked_by FK
+        datetime marked_at
+    }
+```
+
+---
+
+## 5. Technology Stack
+
+| Layer | Technologies |
+| :--- | :--- |
+| **Backend** | Python 3, Flask 3.1.3, Flask-SQLAlchemy 3.1.1, Flask-Login 0.6.3, Flask-WTF 1.3.0, Werkzeug 3.1.9, python-dotenv |
+| **Frontend** | HTML5, CSS3, JavaScript (ES6), Bootstrap 5.3.3, Bootstrap Icons 1.11.3, Google Fonts (Plus Jakarta Sans & Inter) |
+| **Analytics** | Chart.js 4.4.2 (Interactive Bar, Line, and Doughnut charts) |
+| **Database** | SQLite 3 via SQLAlchemy (easily migratable to PostgreSQL or MySQL) |
+| **Image Processing** | Pillow (PIL) for safe cover image generation & upload processing |
+| **Testing** | Pytest 9.2.0 |
+
+---
+
+## 6. User Roles and Capabilities
+
+### A. Student
+* Create account, sign in, sign out, and update profile (academic year, department, password).
+* Browse upcoming and past events with keyword search, category filter, date filter, venue filter, and sorting.
+* View event details (agenda, eligibility, venue, seats left, organizer contact).
+* One-click event registration with automated eligibility, deadline, and capacity validations.
+* Self-service registration cancellation before event commencement.
+* Dedicated **Student Dashboard** showing registered events, past attended events, and alerts.
+* View personal attendance badges (*Attended* / *Not Attended*).
+
+### B. Event Organizer
+* Create events with cover image upload, venue, capacity, deadlines, and eligibility criteria.
+* New events start with **Pending** status awaiting college administrative approval.
+* Dedicated **Organizer Dashboard** tracking active events, pending approvals, and student enrollments.
+* Manage, edit, or cancel hosted events (automatic cancellation notifications sent to registered students).
+* View attendee roster with real-time fill rates.
+* One-click digital check-in to mark attendance (*Attended* / *Not Attended*).
+* Export attendee rosters as CSV files for official records.
+* View **Organizer Analytics** with Chart.js showing capacity fill rates and category distributions.
+
+### C. Administrator
+* Centralized **Admin Dashboard** with high-level platform statistics and metrics.
+* 4 interactive Chart.js visualizations:
+  1. Monthly Event Creation Trends
+  2. Event Category Distribution
+  3. Monthly Student Registrations
+  4. Top Events by Student Participation
+* Moderate all campus events: 1-click **Approve**, **Reject** with reason, or **Delete**.
+* User directory: view all student and organizer accounts, filter by role/department, reassign roles, or remove accounts.
+* Global registrations monitor across all college departments.
+
+### D. In-App Notification System
+* Automatic triggers when an event is submitted, approved, rejected, updated, or cancelled.
+* Real-time notifications for students upon successful registration or cancellation.
+* Notifications for organizers whenever a student enrolls or cancels.
+* Unread counter badge in top navigation with 1-click "Mark All as Read" action.
+
+---
+
+## 7. Demo Login Credentials
+
+The database seeding script provides pre-configured demo accounts for all roles:
+
+| Role | Email | Password | Description |
+| :--- | :--- | :--- | :--- |
+| **Admin** | `admin@campusconnect.edu` | `Admin@123` | Full administrative control & approvals |
+| **Organizer 1** | `techclub@campusconnect.edu` | `Organizer@123` | Tech & Innovation Club organizer |
+| **Organizer 2** | `cultural@campusconnect.edu` | `Organizer@123` | Cultural & Arts Society organizer |
+| **Organizer 3** | `sports@campusconnect.edu` | `Organizer@123` | Athletics & Sports Board organizer |
+| **Student 1** | `aarav.sharma@campusconnect.edu` | `Student@123` | CSE, 3rd Year (Pre-registered demo student) |
+| **Student 2** | `diya.patel@campusconnect.edu` | `Student@123` | IT, 2nd Year (Pre-registered demo student) |
+
+> **Convenience Feature:** The Login page includes one-click demo login buttons that auto-fill the credentials!
+
+---
+
+## 8. Installation & Setup Guide (Windows PowerShell)
+
+Follow these exact commands in Windows PowerShell:
+
+### Step 1: Open the Project Directory
 ```powershell
-cd "c:\Users\AYAN GAMING\cc"
+cd "c:\Users\AYAN GAMING\OneDrive\Desktop\cc"
 ```
 
-### 2. Create and Activate Virtual Environment
+### Step 2: Create and Activate Virtual Environment
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 ```
 
-> *Tip: If PowerShell displays an `Execution_Policies` script error, run:*  
-> `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process`
+*(If script execution is disabled on your system, run `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser` once).*
 
-### 3. Install Dependencies
+### Step 3: Install Required Dependencies
 ```powershell
-python -m pip install -r requirements.txt
+pip install -r requirements.txt
 ```
 
-### 4. Configure Environment Variables
-Copy `.env.example` to `.env` (or customize the existing `.env` file):
+### Step 4: Configure Environment Variables
+Copy `.env.example` to `.env` (already created):
 ```powershell
 Copy-Item .env.example .env
 ```
 
-Open `.env` and set your local MySQL root password:
-```ini
-SECRET_KEY=campusconnect-secret-key-super-secure-2026-viva-demo
-DB_HOST=localhost
-DB_PORT=3306
-DB_NAME=campusconnect
-DB_USERNAME=root
-DB_PASSWORD=your_actual_mysql_password_here
-
-# When set to True, the application seamlessly falls back to a local SQLite database
-# if MySQL credentials are not yet configured or if the MySQL service is offline.
-ALLOW_SQLITE_FALLBACK=True
-
-FLASK_ENV=development
-FLASK_DEBUG=1
-```
-
-### 5. MySQL Database Setup
-In MySQL Workbench or the MySQL Command Line Client, execute:
-```sql
-CREATE DATABASE IF NOT EXISTS campusconnect;
-```
-
-### 6. Seed Sample Events and Admin Account
-Run the development CLI command to populate sample events (College Hackathon, Cultural Fest, Sports Meet, Web Dev Workshop, Technical Seminar):
+### Step 5: Seed the Database with Realistic Demo Data
+Run the seeding script to create database tables, sample events, users, registrations, and banners:
 ```powershell
-python run.py seed-events
-```
-> **Default Admin Credentials Generated:**
-> - **Email:** `admin@campusconnect.edu`
-> - **Password:** `Admin@123`
-
-You can also create a custom administrator account interactively:
-```powershell
-python run.py create-admin
+python seed.py
 ```
 
-### 7. Run the Application
+### Step 6: Run the Web Application
 ```powershell
 python run.py
 ```
-Open your browser and navigate to:
-👉 **[http://127.0.0.1:5000/](http://127.0.0.1:5000/)**
 
----
-
-## 🧪 Running Automated Tests
-
-CampusConnect includes 24 automated unit and integration tests using **pytest**. Tests run against an isolated **in-memory SQLite database** (`sqlite:///:memory:`) so your development or production database is never modified or erased.
-
-Execute the test suite with:
-```powershell
-python -m pytest -v
+Open your web browser and navigate to:
+```
+http://127.0.0.1:5000/
 ```
 
-### Test Coverage Summary:
-- **Authentication (`tests/test_auth.py`)**:
-  - Werkzeug password hashing verification and salt security
-  - Student registration and duplicate email rejection
-  - Student login, session establishment, and logout
-  - Administrator login and automatic redirection to admin hub
-  - Invalid credential rejection
-  - Role-based authorization and 403 Forbidden enforcement
-- **Events Management (`tests/test_events.py`)**:
-  - Public homepage status 200 and branding validation
-  - About page rendering
-  - Event title search and category filtering
-  - Event details page rendering
-  - 404 response for invalid event IDs
-  - Admin event creation, modification, and deletion
-  - Student restriction from admin event creation
-- **Registrations & Capacities (`tests/test_registrations.py`)**:
-  - Successful student registration and seat deduction
-  - Prevention of duplicate active registrations
-  - Enforcement of maximum seat capacity limits
-  - Rejection of registrations for past events
-  - Student registration cancellation and immediate seat recovery
-  - Admin participant roster inspection
+---
+
+## 9. Running Automated Tests
+
+A comprehensive test suite of 15 automated test cases is included in the `tests/` directory covering:
+* User registration & password hashing
+* User login authentication & invalid credentials handling
+* Role-based access control (RBAC) restrictions
+* Event creation workflow (starts in pending status)
+* Event editing and permission verification
+* Unauthorized cross-organizer event modification protection
+* Administrative event approval workflow
+* Student event registration
+* Duplicate registration prevention
+* Event capacity limit enforcement
+* Registration cancellation workflow
+* In-app notification creation and mark-as-read flow
+
+To run the complete test suite:
+```powershell
+.\.venv\Scripts\pytest -v
+```
+
+Expected result:
+```
+====================== 15 passed in 43.02s ======================
+```
 
 ---
 
-## 👥 User Workflows
+## 10. Project Directory Structure
 
-### 🎓 Student Workflow
-1. Navigate to `http://127.0.0.1:5000/` and click **"Join as Student"** or **"Sign Up"**.
-2. Enter your Name, College Email, and Password.
-3. Sign in on the **Login** page.
-4. Browse upcoming events on the **Events** page. Use the category pills (*Technology*, *Cultural*, *Sports*, *Workshop*, *Seminar*) or the search bar.
-5. Click **"View Details"** on any event to inspect venue, schedule, and live available seats.
-6. Click **"Confirm Registration"**. Your seat is immediately secured and capacity reflects in real time.
-7. Access the **Student Hub** (`/student/dashboard`) or **My Registrations** (`/student/registrations`) to review booked events.
-8. If your schedule changes, click **"Cancel Registration"**; a confirmation modal will verify the action, update your status to `CANCELLED`, and replenish the seat for peers.
-
-### 🛡️ Administrator Workflow
-1. Log in with admin credentials (e.g., `admin@campusconnect.edu` / `Admin@123`).
-2. You will be automatically redirected to the **Administrator Console** (`/admin/dashboard`).
-3. View high-level metrics: Total Events, Student Accounts, Active Registrations, and Average Capacity Occupancy percentage.
-4. Click **"+ Schedule New Event"** to create a new activity with date, start time, venue, description, category, and capacity.
-5. In the Event Master Roster, click **"Roster (X)"** on any event to view the full student participant list with email addresses and registration timestamps.
-6. Click **"Edit"** to update event details or adjust capacity (guarded so capacity cannot be decreased below current active enrollments).
-7. Click **"Delete"** with modal confirmation to permanently remove an event and cascade-remove its registrations.
-
----
-
-## 🌐 Production Deployment Guide
-
-CampusConnect is pre-configured and tested for zero-downtime deployment on major cloud hosting platforms:
-
-### A. Deploying on Vercel via GitHub (Serverless)
-1. **Push your code to GitHub**:
-   ```bash
-   git add .
-   git commit -m "Prepare production deployment"
-   git push origin main
-   ```
-2. **Import repository into Vercel**:
-   - Go to [vercel.com](https://vercel.com) and click **"Add New Project"**.
-   - Select your GitHub repository.
-   - Framework Preset: **Other** (Vercel automatically detects `vercel.json` and `@vercel/python`).
-   - Root Directory: `./` (Leave as default).
-3. **Configure Environment Variables in Vercel Project Settings**:
-   - `SECRET_KEY`: A strong random string (e.g., `openssl rand -hex 32`).
-   - `FLASK_ENV`: `production`
-   - `ALLOW_SQLITE_FALLBACK`: Set to `True` for instant zero-database testing (uses `/tmp/campusconnect.db`) or provide `DATABASE_URL` for managed MySQL/PostgreSQL.
-   - `DATABASE_URL` *(Recommended for production)*: Connection string to your cloud MySQL or PostgreSQL instance (e.g., TiDB, Aiven, Supabase, Neon, Railway).
-4. **Deploy**: Click **"Deploy"**. The app will be live with full routing and static assets handled seamlessly via `api/index.py` and `vercel.json`.
-
-### B. Deploying on Render or Railway (Container / WSGI)
-1. Connect your GitHub repository to Render or Railway.
-2. The platform automatically detects `Procfile` (`web: gunicorn wsgi:app`) and installs `requirements.txt`.
-3. Set environment variables:
-   - `SECRET_KEY`: Your production secret key.
-   - `FLASK_ENV`: `production`
-   - `DATABASE_URL`: Your managed MySQL or PostgreSQL database URI.
-   - `PORT`: Handled automatically by the host (defaults to `5000` locally).
-
----
-
-## 🎓 College Viva Examination & Technical Defense Guide
-
-This section is prepared specifically to help 2nd-year B.Tech CSE students answer technical questions from external examiners during project viva presentations:
-
-### Q1: What software architecture does CampusConnect follow?
-> **Answer:** CampusConnect adheres to the **Model-View-Template (MVT)** architecture (Flask's implementation of MVC). 
-> - **Models (`app/models.py`)**: SQLAlchemy classes representing database entities (`User`, `Event`, `Registration`) with table relationships, constraints, and business logic methods.
-> - **Views / Controllers (`app/*/routes.py`)**: Flask Blueprints encapsulating route endpoints, authorization decorators, request validation, and database transactions.
-> - **Templates (`app/templates/`)**: Jinja2 HTML templates displaying data dynamically using components and layouts extending `base.html`.
-
-### Q2: Why was Flask chosen instead of Java Spring Boot or Django?
-> **Answer:** Flask is a minimalist Python framework that provides explicit control over every architectural component. Unlike Spring Boot, which involves significant boilerplate, heavy XML/annotation layers, and high JVM RAM consumption, or Django, which has a rigid monolithic structure, Flask allows students to cleanly demonstrate core computer science concepts—Application Factory Pattern, Blueprints, custom decorators, connection pooling, and CSRF token lifecycles—with minimal overhead.
-
-### Q3: How does the system prevent race conditions and overbooking when seats are limited?
-> **Answer:** Overbooking prevention is enforced at both the application and database layer:
-> 1. In `app/models.py`, `available_seats` is dynamically derived: `max(0, capacity - active_registrations_count)`.
-> 2. The `can_register()` method verifies that `is_full` is False and the event is not in the past.
-> 3. Active registrations are committed within atomic database transactions. If an error occurs, `db.session.rollback()` ensures database integrity.
-> 4. In production with high concurrency, MySQL row-level locking (`SELECT ... FOR UPDATE`) is integrated to serialize seat allocations.
-
-### Q4: How is security implemented for authentication and forms?
-> **Answer:**
-> - **Password Hashing:** Passwords are never stored as plain text. Werkzeug uses the PBKDF2/scrypt one-way key derivation function with unique cryptographic salts, making them immune to dictionary and rainbow-table attacks.
-> - **CSRF Protection:** Every POST form includes an encrypted CSRF token generated by Flask-WTF and synchronized with user session state to prevent Cross-Site Request Forgery.
-> - **Role-Based Access Control (RBAC):** Custom decorators (`@admin_required`, `@student_required`) check user roles before allowing access to administrative routes, issuing HTTP 403 Forbidden responses upon unauthorized attempts.
-> - **Open Redirect Prevention:** The `is_safe_url()` utility inspects redirect query parameters (`next=...`) to verify the destination matches the host domain.
-
-### Q5: What database normalization and indexing strategies were used?
-> **Answer:**
-> - The database schema is normalized up to **Third Normal Form (3NF)**:
->   - `users` stores identity and authentication credentials.
->   - `events` stores event scheduling and venue specifications.
->   - `registrations` acts as an associative entity (junction table) resolving the many-to-many relationship between students and events.
-> - Indexes are explicitly defined on frequently queried columns: `users.email` (unique index), `events.title`, `events.category`, `events.event_date`, and a composite index `idx_user_event_status` on `(user_id, event_id, status)` for fast student registration lookups.
+```
+campusconnect/
+│
+├── app/
+│   ├── __init__.py          # Flask application factory, blueprints & context processors
+│   ├── extensions.py        # SQLAlchemy, LoginManager, CSRFProtect instances
+│   ├── models.py            # User, Event, Registration, Notification, EventAttendance models
+│   ├── forms.py             # Flask-WTF forms with custom server-side validators
+│   ├── utils.py             # Role decorators (@role_required), file upload & notification helpers
+│   │
+│   ├── auth/                # Authentication blueprint (Login, Register, Logout, Profile)
+│   │   ├── __init__.py
+│   │   └── routes.py
+│   ├── student/             # Student dashboard & registration management
+│   │   ├── __init__.py
+│   │   └── routes.py
+│   ├── organizer/           # Organizer dashboard, event CRUD, attendance & analytics
+│   │   ├── __init__.py
+│   │   └── routes.py
+│   ├── admin/               # Admin panel, event approvals, user directory & global analytics
+│   │   ├── __init__.py
+│   │   └── routes.py
+│   ├── events/              # Event catalog discovery, search/filtering, details & registration
+│   │   ├── __init__.py
+│   │   └── routes.py
+│   ├── notifications/       # In-app notifications feed & mark-as-read
+│   │   ├── __init__.py
+│   │   └── routes.py
+│   │
+│   ├── static/
+│   │   ├── css/
+│   │   │   └── styles.css   # Custom SaaS UI styling (Deep Indigo & Violet palette)
+│   │   ├── js/
+│   │   │   └── main.js      # Image preview, auto-dismiss alerts, confirmation dialogs
+│   │   └── uploads/         # Event cover images & banners
+│   │
+│   └── templates/
+│       ├── base.html        # Main layout with navigation, flash alerts, and footer
+│       ├── landing.html     # SaaS landing page with hero, search, stats & featured cards
+│       ├── errors/          # Custom 403, 404, and 500 error templates
+│       ├── auth/            # login.html, register.html, profile.html
+│       ├── student/         # dashboard.html, my_registrations.html
+│       ├── organizer/       # dashboard.html, manage_events.html, create_event.html, ...
+│       ├── admin/           # dashboard.html, events.html, users.html, registrations.html
+│       ├── events/          # discover.html, details.html
+│       └── notifications/   # index.html
+│
+├── instance/
+│   └── campusconnect.db     # SQLite local database
+├── tests/
+│   ├── __init__.py
+│   ├── conftest.py          # Pytest fixtures and test database setup
+│   └── test_campusconnect.py# 15 automated test cases
+├── config.py                # Base configuration & TestConfig
+├── run.py                   # Application entry point
+├── seed.py                  # Database seeding script with realistic campus events
+├── requirements.txt         # Pinned Python package dependencies
+├── .env.example             # Environment variable template
+├── .gitignore               # Git ignore rules
+└── README.md                # Project documentation
+```
 
 ---
 
-## 🔧 Troubleshooting & FAQ
+## 11. Security Implementation Highlights
 
-| Problem | Cause | Solution |
-| :--- | :--- | :--- |
-| `Access denied for user 'root'@'localhost'` | Incorrect MySQL password in `.env` | Update `DB_PASSWORD` in `.env` with your local MySQL password. If left blank, CampusConnect automatically falls back to SQLite so your app keeps running. |
-| `Can't create database 'campusconnect'` | Database already exists or MySQL service stopped | Verify MySQL80 is running via Windows Services (`Get-Service MySQL80`). If the database exists, the app connects directly to it. |
-| Port 5000 is occupied | Another process or AirPlay/Windows service is using port 5000 | Set a different port in `.env` (e.g. `PORT=5001`) or run: `python run.py` with `$env:PORT=5001`. |
-| PowerShell script execution error | Windows execution policy blocks `.venv\Scripts\Activate.ps1` | Run `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process` in your PowerShell window. |
+* **Password Security:** Salted hashing via Werkzeug (`generate_password_hash` / `check_password_hash`). Plain-text passwords are never stored.
+* **Role-Based Authorization:** Custom `@role_required` decorator validates role claims on every protected endpoint, preventing privilege escalation.
+* **CSRF Protection:** Flask-WTF tokens embedded on all state-modifying POST forms.
+* **SQL Injection Protection:** SQLAlchemy ORM parameterized queries prevent SQL injection vulnerabilities.
+* **Secure File Uploads:** Uploaded files validated against allowed MIME extensions (`jpg`, `jpeg`, `png`, `webp`, `gif`), sanitized with unique UUID hex filenames, and constrained by `MAX_CONTENT_LENGTH` (16MB).
+* **Database Integrity:** Unique constraint on `(student_id, event_id)` prevents race-condition double bookings.
 
 ---
 
-## 📄 License & Academic Attribution
-Developed as an open-source academic project for B.Tech Computer Science and Engineering students. Free to use, adapt, and demonstrate for university submissions and technical interviews.
+## 12. Future Enhancements
+
+1. **Automated QR Code Tickets:** Generate unique QR codes for confirmed registrations for contactless mobile scanning.
+2. **Email Integration:** Send transactional emails via SMTP or SendGrid for registration confirmation receipts and reminder emails 24 hours before events.
+3. **Calendar Export:** `.ics` file generation to allow students to add college events directly to Google Calendar or Apple Calendar.
+4. **Payment Gateway Integration:** Optional Razorpay/Stripe integration for ticketed or paid college workshops and merchandise.
+
+---
+
+## 13. License & Academic Attribution
+Developed as an academic full-stack project demonstrating best practices in Python web development, database architecture, responsive UI design, and automated testing.

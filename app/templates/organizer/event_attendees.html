@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block title %}Attendees for {{ event.title }} - CampusConnect{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <!-- Event Info Banner -->
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 pb-2 border-bottom">
+    <div>
+      <div class="d-flex align-items-center gap-2 mb-1">
+        <a href="{{ url_for('organizer.manage_events') }}" class="text-secondary text-decoration-none">
+          <i class="bi bi-arrow-left"></i> Events
+        </a>
+        <span class="text-muted">/</span>
+        <span class="badge badge-cat-{{ event.category|lower }}">{{ event.category }}</span>
+      </div>
+      <h2 class="fw-bold mb-1">{{ event.title }} - Participants</h2>
+      <p class="text-secondary mb-0">
+        <i class="bi bi-calendar3 me-1 text-primary"></i> {{ event.event_date.strftime('%B %d, %Y') }} &bull;
+        <i class="bi bi-geo-alt me-1 text-danger"></i> {{ event.venue }}
+      </p>
+    </div>
+    <div class="d-flex gap-2 mt-3 mt-md-0">
+      <a href="{{ url_for('organizer.export_csv', event_id=event.id) }}" class="btn btn-outline-success">
+        <i class="bi bi-download me-1"></i> Export CSV
+      </a>
+      <a href="{{ url_for('events.details', event_id=event.id) }}" class="btn btn-outline-primary">
+        <i class="bi bi-box-arrow-up-right me-1"></i> Public Page
+      </a>
+    </div>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="row g-3 mb-4">
+    <div class="col-md-4">
+      <div class="stat-card">
+        <div>
+          <div class="stat-value text-indigo">{{ confirmed_count }} / {{ event.capacity }}</div>
+          <div class="stat-label">Confirmed Registrations</div>
+        </div>
+        <div class="stat-icon stat-icon-indigo">
+          <i class="bi bi-people-fill"></i>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="stat-card">
+        <div>
+          <div class="stat-value text-green">{{ attended_count }}</div>
+          <div class="stat-label">Marked Attended</div>
+        </div>
+        <div class="stat-icon stat-icon-green">
+          <i class="bi bi-check2-circle"></i>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="stat-card">
+        <div>
+          {% set rate = ((attended_count / confirmed_count * 100)|round|int) if confirmed_count > 0 else 0 %}
+          <div class="stat-value text-purple">{{ rate }}%</div>
+          <div class="stat-label">Attendance Rate</div>
+        </div>
+        <div class="stat-icon stat-icon-purple">
+          <i class="bi bi-graph-up"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Attendees Table -->
+  {% if registrations and registrations|length > 0 %}
+    <div class="card-modern shadow-sm overflow-hidden">
+      <div class="table-responsive">
+        <table class="table table-modern table-hover mb-0">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Student Name</th>
+              <th>Email</th>
+              <th>Department & Year</th>
+              <th>Registration Date</th>
+              <th>Status</th>
+              <th>Attendance</th>
+              <th class="text-end">Mark Attendance</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for reg in registrations %}
+              <tr>
+                <td>{{ loop.index }}</td>
+                <td>
+                  <div class="fw-bold">{{ reg.student.name }}</div>
+                </td>
+                <td>
+                  <a href="mailto:{{ reg.student.email }}" class="text-decoration-none text-secondary">{{ reg.student.email }}</a>
+                </td>
+                <td>
+                  <div class="small fw-semibold">{{ reg.student.department or 'N/A' }}</div>
+                  <div class="small text-muted">{{ reg.student.year or '' }}</div>
+                </td>
+                <td>
+                  <span class="small text-muted">{{ reg.registration_date.strftime('%b %d, %Y %I:%M %p') }}</span>
+                </td>
+                <td>
+                  {% if reg.registration_status == 'confirmed' %}
+                    <span class="badge bg-success-subtle text-success fw-bold px-2 py-1">Confirmed</span>
+                  {% else %}
+                    <span class="badge bg-secondary-subtle text-secondary fw-bold px-2 py-1">Cancelled</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if reg.attendance_status == 'attended' %}
+                    <span class="badge bg-primary text-white fw-bold px-2 py-1">
+                      <i class="bi bi-check-lg me-1"></i>Attended
+                    </span>
+                  {% else %}
+                    <span class="badge bg-light text-muted border px-2 py-1">Not Attended</span>
+                  {% endif %}
+                </td>
+                <td class="text-end">
+                  {% if reg.registration_status == 'confirmed' %}
+                    <form action="{{ url_for('organizer.toggle_attendance', event_id=event.id, reg_id=reg.id) }}" method="POST" class="d-inline">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                      {% if reg.attendance_status == 'attended' %}
+                        <button type="submit" class="btn btn-sm btn-outline-warning" title="Revoke Attendance">
+                          <i class="bi bi-x-circle me-1"></i> Revoke
+                        </button>
+                      {% else %}
+                        <button type="submit" class="btn btn-sm btn-success" title="Mark Attended">
+                          <i class="bi bi-check-lg me-1"></i> Check In
+                        </button>
+                      {% endif %}
+                    </form>
+                  {% else %}
+                    <span class="text-muted small">N/A</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% else %}
+    <div class="card-modern p-5 text-center my-4">
+      <div class="rounded-circle bg-light d-inline-flex align-items-center justify-content-center mb-3" style="width: 70px; height: 70px;">
+        <i class="bi bi-people text-muted fs-2"></i>
+      </div>
+      <h4 class="fw-bold mb-2">No Registrations Yet</h4>
+      <p class="text-secondary mb-4 max-w-md mx-auto">
+        No students have enrolled for this event yet. Make sure your event has been approved by admin and share the link on campus!
+      </p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,300 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Control Center - CampusConnect{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <!-- Admin Header -->
+  <div class="card-modern p-4 p-md-5 mb-4 shadow-sm" style="background: linear-gradient(135deg, #1E1B4B 0%, #312E81 100%); color: white;">
+    <div class="row align-items-center">
+      <div class="col-md-8">
+        <span class="badge bg-warning text-dark text-uppercase px-3 py-1 mb-2 fw-bold">Administration Control Panel</span>
+        <h2 class="fw-bold mb-1 text-white">Campus Event Governance</h2>
+        <p class="text-light opacity-75 mb-0">
+          Supervise user accounts, moderate submitted campus events, inspect attendance rosters, and review campus-wide engagement metrics.
+        </p>
+      </div>
+      <div class="col-md-4 text-md-end mt-3 mt-md-0">
+        <a href="{{ url_for('admin.manage_events', status='pending') }}" class="btn btn-warning fw-bold">
+          <i class="bi bi-clock-history me-1"></i> Review Pending ({{ pending_events }})
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Key Statistics Grid -->
+  <div class="row g-3 mb-4">
+    <div class="col-xl-2 col-md-4 col-6">
+      <div class="stat-card">
+        <div>
+          <div class="stat-value text-indigo">{{ total_students }}</div>
+          <div class="stat-label">Students</div>
+        </div>
+        <div class="stat-icon stat-icon-indigo">
+          <i class="bi bi-person-badge"></i>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-xl-2 col-md-4 col-6">
+      <div class="stat-card">
+        <div>
+          <div class="stat-value text-purple">{{ total_organizers }}</div>
+          <div class="stat-label">Organizers</div>
+        </div>
+        <div class="stat-icon stat-icon-purple">
+          <i class="bi bi-person-workspace"></i>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-xl-2 col-md-4 col-6">
+      <div class="stat-card">
+        <div>
+          <div class="stat-value text-dark">{{ total_events }}</div>
+          <div class="stat-label">Total Events</div>
+        </div>
+        <div class="stat-icon bg-light text-dark">
+          <i class="bi bi-calendar-range"></i>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-xl-2 col-md-4 col-6">
+      <div class="stat-card">
+        <div>
+          <div class="stat-value text-green">{{ approved_events }}</div>
+          <div class="stat-label">Approved</div>
+        </div>
+        <div class="stat-icon stat-icon-green">
+          <i class="bi bi-check2-circle"></i>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-xl-2 col-md-4 col-6">
+      <div class="stat-card">
+        <div>
+          <div class="stat-value text-orange">{{ pending_events }}</div>
+          <div class="stat-label">Pending</div>
+        </div>
+        <div class="stat-icon stat-icon-orange">
+          <i class="bi bi-hourglass-split"></i>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-xl-2 col-md-4 col-6">
+      <div class="stat-card">
+        <div>
+          <div class="stat-value text-primary">{{ total_registrations }}</div>
+          <div class="stat-label">Bookings</div>
+        </div>
+        <div class="stat-icon stat-icon-indigo">
+          <i class="bi bi-ticket-detailed"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pending Approvals Quick Action Section -->
+  {% if pending_list and pending_list|length > 0 %}
+    <div class="card-modern p-4 mb-4 shadow-sm border-warning">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="fw-bold text-dark mb-0">
+          <i class="bi bi-exclamation-circle-fill text-warning me-2"></i>Events Awaiting Administrative Approval
+        </h5>
+        <a href="{{ url_for('admin.manage_events', status='pending') }}" class="small fw-bold text-primary">View All Pending</a>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Event Title</th>
+              <th>Organizer</th>
+              <th>Category</th>
+              <th>Event Date</th>
+              <th>Capacity</th>
+              <th class="text-end">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for ev in pending_list %}
+              <tr>
+                <td>
+                  <a href="{{ url_for('events.details', event_id=ev.id) }}" class="fw-bold text-decoration-none text-dark">
+                    {{ ev.title }}
+                  </a>
+                  <div class="small text-muted">{{ ev.venue }}</div>
+                </td>
+                <td>
+                  <div class="fw-semibold">{{ ev.organizer.name }}</div>
+                  <small class="text-muted">{{ ev.organizer.email }}</small>
+                </td>
+                <td>
+                  <span class="badge badge-cat-{{ ev.category|lower }}">{{ ev.category }}</span>
+                </td>
+                <td>{{ ev.event_date.strftime('%b %d, %Y') }}</td>
+                <td>{{ ev.capacity }}</td>
+                <td class="text-end text-nowrap">
+                  <form action="{{ url_for('admin.approve_event', event_id=ev.id) }}" method="POST" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-sm btn-success me-1">
+                      <i class="bi bi-check-lg"></i> Approve
+                    </button>
+                  </form>
+                  <form action="{{ url_for('admin.reject_event', event_id=ev.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to reject this event?');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                      <i class="bi bi-x-lg"></i> Reject
+                    </button>
+                  </form>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% endif %}
+
+  <!-- Chart.js Visualizations (4 Charts) -->
+  <div class="row g-4 mb-4">
+    <!-- Chart 1: Monthly Event Creation -->
+    <div class="col-lg-6">
+      <div class="card-modern p-4 shadow-sm h-100">
+        <h5 class="fw-bold mb-3">Monthly Event Creation</h5>
+        <div style="position: relative; height: 280px;">
+          <canvas id="monthlyEventsChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chart 2: Category Distribution -->
+    <div class="col-lg-6">
+      <div class="card-modern p-4 shadow-sm h-100">
+        <h5 class="fw-bold mb-3">Event Category Distribution</h5>
+        <div style="position: relative; height: 280px;">
+          <canvas id="categoryDistChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chart 3: Monthly Student Registrations -->
+    <div class="col-lg-6">
+      <div class="card-modern p-4 shadow-sm h-100">
+        <h5 class="fw-bold mb-3">Monthly Student Registrations</h5>
+        <div style="position: relative; height: 280px;">
+          <canvas id="monthlyRegsChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chart 4: Top Events Participation -->
+    <div class="col-lg-6">
+      <div class="card-modern p-4 shadow-sm h-100">
+        <h5 class="fw-bold mb-3">Top Events by Participation</h5>
+        <div style="position: relative; height: 280px;">
+          <canvas id="topEventsChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Chart 1: Monthly Events
+  const ctxEvents = document.getElementById('monthlyEventsChart');
+  if (ctxEvents) {
+    new Chart(ctxEvents, {
+      type: 'bar',
+      data: {
+        labels: {{ month_labels|safe }},
+        datasets: [{
+          label: 'Events Created',
+          data: {{ month_counts|safe }},
+          backgroundColor: '#4F46E5',
+          borderRadius: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+      }
+    });
+  }
+
+  // Chart 2: Category Distribution
+  const ctxCat = document.getElementById('categoryDistChart');
+  if (ctxCat) {
+    new Chart(ctxCat, {
+      type: 'doughnut',
+      data: {
+        labels: {{ cat_labels|safe }},
+        datasets: [{
+          data: {{ cat_values|safe }},
+          backgroundColor: ['#3730A3', '#7C3AED', '#F59E0B', '#10B981', '#3B82F6', '#EC4899', '#64748B']
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom' } }
+      }
+    });
+  }
+
+  // Chart 3: Monthly Registrations
+  const ctxRegs = document.getElementById('monthlyRegsChart');
+  if (ctxRegs) {
+    new Chart(ctxRegs, {
+      type: 'line',
+      data: {
+        labels: {{ reg_month_labels|safe }},
+        datasets: [{
+          label: 'Registrations',
+          data: {{ reg_month_counts|safe }},
+          borderColor: '#7C3AED',
+          backgroundColor: 'rgba(124, 58, 237, 0.1)',
+          fill: true,
+          tension: 0.3
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+      }
+    });
+  }
+
+  // Chart 4: Top Events
+  const ctxTop = document.getElementById('topEventsChart');
+  if (ctxTop) {
+    new Chart(ctxTop, {
+      type: 'bar',
+      indexAxis: 'y',
+      data: {
+        labels: {{ top_event_labels|safe }},
+        datasets: [{
+          label: 'Confirmed Registrations',
+          data: {{ top_event_counts|safe }},
+          backgroundColor: '#F59E0B',
+          borderRadius: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: { x: { beginAtZero: true, ticks: { precision: 0 } } }
+      }
+    });
+  }
+});
+</script>
+{% endblock %}

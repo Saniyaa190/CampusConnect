@@ -1,200 +1,184 @@
-from datetime import datetime, timezone
+from datetime import datetime, date, time
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
 from app.extensions import db, login_manager
 
-
-def utc_now():
-    """Return current UTC datetime."""
-    return datetime.now(timezone.utc)
-
-
 class User(UserMixin, db.Model):
-    """User account model for Students and Administrators."""
-    __tablename__ = 'users'
-
+    __tablename__ = "users"
+    
     id = db.Column(db.Integer, primary_key=True)
-    full_name = db.Column(db.String(100), nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=False, index=True)
+    name = db.Column(db.String(120), nullable=False)
+    email = db.Column(db.String(150), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(255), nullable=False)
-    role = db.Column(db.String(20), nullable=False, default='STUDENT')  # 'STUDENT' or 'ADMIN'
-    created_at = db.Column(db.DateTime, default=utc_now, nullable=False)
-
+    role = db.Column(db.String(20), nullable=False, default="student", index=True)  # student, organizer, admin
+    department = db.Column(db.String(100), nullable=True)
+    year = db.Column(db.String(30), nullable=True)  # e.g., "1st Year", "2nd Year", "3rd Year", "4th Year", "Faculty"
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    
     # Relationships
-    registrations = db.relationship(
-        'Registration',
-        backref='user',
-        lazy='dynamic',
-        cascade='all, delete-orphan'
-    )
-    events_created = db.relationship(
-        'Event',
-        backref='creator',
-        lazy='dynamic'
-    )
+    organized_events = db.relationship("Event", back_populates="organizer", cascade="all, delete-orphan", lazy="dynamic")
+    registrations = db.relationship("Registration", back_populates="student", cascade="all, delete-orphan", lazy="dynamic")
+    notifications = db.relationship("Notification", back_populates="user", cascade="all, delete-orphan", lazy="dynamic", order_by="desc(Notification.created_at)")
 
     def set_password(self, password):
-        """Hash and securely store user password using Werkzeug."""
         self.password_hash = generate_password_hash(password)
 
     def check_password(self, password):
-        """Verify candidate password against stored password hash."""
         return check_password_hash(self.password_hash, password)
 
     @property
     def is_admin(self):
-        """Check if user has the ADMIN role."""
-        return self.role == 'ADMIN'
+        return self.role == "admin"
+
+    @property
+    def is_organizer(self):
+        return self.role == "organizer"
 
     @property
     def is_student(self):
-        """Check if user has the STUDENT role."""
-        return self.role == 'STUDENT'
+        return self.role == "student"
 
-    def is_registered_for(self, event_id):
-        """Check if student currently has an active registration for an event."""
-        return self.registrations.filter_by(event_id=event_id, status='REGISTERED').first() is not None
-
-    def get_registration_for(self, event_id):
-        """Retrieve active registration record for an event if it exists."""
-        return self.registrations.filter_by(event_id=event_id, status='REGISTERED').first()
+    @property
+    def unread_notifications_count(self):
+        return self.notifications.filter_by(is_read=False).count()
 
     def __repr__(self):
-        return f"<User {self.id}: {self.email} ({self.role})>"
+        return f"<User {self.email} ({self.role})>"
 
 
 @login_manager.user_loader
 def load_user(user_id):
-    """Flask-Login user loader callback using modern db.session.get."""
-    try:
-        return db.session.get(User, int(user_id))
-    except (ValueError, TypeError):
-        return None
+    return db.session.get(User, int(user_id))
 
 
 class Event(db.Model):
-    """College Event model."""
-    __tablename__ = 'events'
+    __tablename__ = "events"
 
     id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String(150), nullable=False, index=True)
+    title = db.Column(db.String(200), nullable=False, index=True)
     description = db.Column(db.Text, nullable=False)
-    category = db.Column(db.String(50), nullable=False, index=True)
-    venue = db.Column(db.String(150), nullable=False)
+    category = db.Column(db.String(50), nullable=False, index=True)  # Technical, Cultural, Sports, Workshops, Seminars, Competitions, Other
     event_date = db.Column(db.Date, nullable=False, index=True)
     start_time = db.Column(db.Time, nullable=False)
-    capacity = db.Column(db.Integer, nullable=False, default=50)
-    created_at = db.Column(db.DateTime, default=utc_now, nullable=False)
-    created_by = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    end_time = db.Column(db.Time, nullable=False)
+    venue = db.Column(db.String(150), nullable=False)
+    capacity = db.Column(db.Integer, nullable=False, default=100)
+    registration_deadline = db.Column(db.Date, nullable=False)
+    eligibility = db.Column(db.String(150), default="All Students")
+    contact_email = db.Column(db.String(150), nullable=False)
+    image = db.Column(db.String(255), default="default_event.jpg")
+    organizer_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    approval_status = db.Column(db.String(20), default="pending", nullable=False, index=True)  # pending, approved, rejected
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
     # Relationships
-    registrations = db.relationship(
-        'Registration',
-        backref='event',
-        lazy='dynamic',
-        cascade='all, delete-orphan'
-    )
-
-    # Category choices for validation
-    CATEGORIES = ['Technology', 'Cultural', 'Sports', 'Workshop', 'Seminar']
+    organizer = db.relationship("User", back_populates="organized_events")
+    registrations = db.relationship("Registration", back_populates="event", cascade="all, delete-orphan", lazy="dynamic")
+    attendances = db.relationship("EventAttendance", back_populates="event", cascade="all, delete-orphan", lazy="dynamic")
 
     @property
-    def active_registrations_count(self):
-        """Count registrations with status REGISTERED."""
-        return self.registrations.filter_by(status='REGISTERED').count()
+    def registered_count(self):
+        return self.registrations.filter_by(registration_status="confirmed").count()
 
     @property
     def available_seats(self):
-        """Calculate remaining seats available for registration."""
-        remaining = self.capacity - self.active_registrations_count
+        remaining = self.capacity - self.registered_count
         return max(0, remaining)
 
     @property
     def is_full(self):
-        """Check if event capacity has been reached."""
         return self.available_seats <= 0
 
     @property
     def is_past(self):
-        """Check if event has already occurred based on current local date and time."""
-        now = datetime.now()
-        event_datetime = datetime.combine(self.event_date, self.start_time)
-        return event_datetime < now
+        today = date.today()
+        now_time = datetime.now().time()
+        if self.event_date < today:
+            return True
+        if self.event_date == today and self.end_time < now_time:
+            return True
+        return False
 
     @property
-    def formatted_date(self):
-        """Human-readable date format, e.g. 'Oct 28, 2026'."""
-        return self.event_date.strftime('%b %d, %Y')
+    def is_deadline_passed(self):
+        return date.today() > self.registration_deadline
 
     @property
-    def formatted_time(self):
-        """Human-readable 12-hour time format, e.g. '10:30 AM'."""
-        return self.start_time.strftime('%I:%M %p')
+    def is_approved(self):
+        return self.approval_status == "approved"
 
-    @property
-    def occupancy_percentage(self):
-        """Calculate occupancy percentage for progress meters."""
-        if not self.capacity or self.capacity <= 0:
-            return 0
-        pct = (self.active_registrations_count / self.capacity) * 100
-        return min(100, round(pct, 1))
-
-    def can_register(self, user):
-        """Check if user can register for this event."""
-        if not user or not user.is_authenticated:
-            return False, "You must be logged in to register."
-        if not user.is_student:
-            return False, "Only students can register for events."
+    def can_register(self, user=None):
+        if not self.is_approved:
+            return False, "This event has not been approved yet."
         if self.is_past:
-            return False, "Registration closed: this event has already taken place."
-        if user.is_registered_for(self.id):
-            return False, "You are already registered for this event."
+            return False, "This event has already concluded."
+        if self.is_deadline_passed:
+            return False, "Registration deadline for this event has passed."
         if self.is_full:
-            return False, "Sorry, this event is fully booked."
-        return True, "Eligible to register."
+            return False, "This event has reached full capacity."
+        if user and user.is_authenticated:
+            if not user.is_student:
+                return False, "Only students can register for events."
+            existing = self.registrations.filter_by(student_id=user.id, registration_status="confirmed").first()
+            if existing:
+                return False, "You are already registered for this event."
+        return True, "Registration is open."
 
     def __repr__(self):
-        return f"<Event {self.id}: {self.title} ({self.category})>"
+        return f"<Event {self.title} ({self.approval_status})>"
 
 
 class Registration(db.Model):
-    """Event Registration model linking Students and Events."""
-    __tablename__ = 'registrations'
+    __tablename__ = "registrations"
 
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
-    event_id = db.Column(db.Integer, db.ForeignKey('events.id', ondelete='CASCADE'), nullable=False, index=True)
-    registration_date = db.Column(db.DateTime, default=utc_now, nullable=False)
-    status = db.Column(db.String(20), nullable=False, default='REGISTERED', index=True)  # 'REGISTERED' or 'CANCELLED'
+    student_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    event_id = db.Column(db.Integer, db.ForeignKey("events.id", ondelete="CASCADE"), nullable=False, index=True)
+    registration_date = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    registration_status = db.Column(db.String(20), default="confirmed", nullable=False)  # confirmed, cancelled
+    attendance_status = db.Column(db.String(20), default="not_attended", nullable=False)  # not_attended, attended
 
-    # Database table arguments: index for fast lookup of a user's status for an event
     __table_args__ = (
-        db.Index('idx_user_event_status', 'user_id', 'event_id', 'status'),
+        db.UniqueConstraint("student_id", "event_id", name="uq_student_event"),
     )
 
-    @property
-    def is_active(self):
-        """Check if registration is in active REGISTERED state."""
-        return self.status == 'REGISTERED'
-
-    @property
-    def is_cancelled(self):
-        """Check if registration has been cancelled."""
-        return self.status == 'CANCELLED'
-
-    @property
-    def can_cancel(self):
-        """Student can cancel if registration is active and the event hasn't already passed."""
-        return self.is_active and (self.event is None or not self.event.is_past)
-
-    def cancel(self):
-        """Cancel registration."""
-        self.status = 'CANCELLED'
-
-    def reactivate(self):
-        """Reactivate previously cancelled registration."""
-        self.status = 'REGISTERED'
-        self.registration_date = utc_now()
+    # Relationships
+    student = db.relationship("User", back_populates="registrations")
+    event = db.relationship("Event", back_populates="registrations")
 
     def __repr__(self):
-        return f"<Registration {self.id}: User {self.user_id} -> Event {self.event_id} [{self.status}]>"
+        return f"<Registration Student:{self.student_id} Event:{self.event_id} Status:{self.registration_status}>"
+
+
+class Notification(db.Model):
+    __tablename__ = "notifications"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    title = db.Column(db.String(150), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    is_read = db.Column(db.Boolean, default=False, nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    # Relationships
+    user = db.relationship("User", back_populates="notifications")
+
+    def __repr__(self):
+        return f"<Notification User:{self.user_id} Title:{self.title} Read:{self.is_read}>"
+
+
+class EventAttendance(db.Model):
+    __tablename__ = "event_attendances"
+
+    id = db.Column(db.Integer, primary_key=True)
+    event_id = db.Column(db.Integer, db.ForeignKey("events.id", ondelete="CASCADE"), nullable=False, index=True)
+    student_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    marked_by = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    marked_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    event = db.relationship("Event", back_populates="attendances")
+    student = db.relationship("User", foreign_keys=[student_id])
+    marker = db.relationship("User", foreign_keys=[marked_by])
+
+    def __repr__(self):
+        return f"<EventAttendance Event:{self.event_id} Student:{self.student_id}>"

@@ -1,0 +1,356 @@
+{% extends "base.html" %}
+
+{% block title %}CampusConnect - Your Campus. Your Events. Your Community.{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-wrapper">
+  <div class="container">
+    <div class="row align-items-center g-5">
+      <div class="col-lg-7 text-center text-lg-start">
+        <div class="hero-pill">
+          <i class="bi bi-stars text-warning"></i>
+          <span>Welcome to the Official Campus Event Hub</span>
+        </div>
+        <h1 class="display-4 fw-extrabold mb-3 text-gradient">
+          Discover What's Happening on Your Campus.
+        </h1>
+        <p class="lead text-secondary mb-4 pe-lg-4">
+          Find exciting events, connect with your college community, and never miss an opportunity to participate. Centralized announcements, one-click registrations, and instant updates.
+        </p>
+
+        <!-- Fast Search Bar -->
+        <form action="{{ url_for('events.discover') }}" method="GET" class="card-modern p-2 mb-4 d-flex flex-sm-row gap-2 shadow-sm">
+          <div class="input-group">
+            <span class="input-group-text bg-white border-0 text-secondary"><i class="bi bi-search"></i></span>
+            <input type="text" name="q" class="form-control border-0 ps-0 shadow-none" placeholder="Search hackathons, fests, workshops, sports...">
+          </div>
+          <button type="submit" class="btn btn-primary-indigo text-nowrap px-4">Find Events</button>
+        </form>
+
+        <div class="d-flex flex-wrap gap-3 justify-content-center justify-content-lg-start">
+          <a href="{{ url_for('events.discover') }}" class="btn btn-primary-indigo btn-lg px-4">
+            <i class="bi bi-compass me-2"></i>Explore Events
+          </a>
+          {% if not current_user.is_authenticated %}
+            <a href="{{ url_for('auth.register') }}" class="btn btn-outline-indigo btn-lg px-4">
+              <i class="bi bi-person-plus me-2"></i>Get Started
+            </a>
+          {% else %}
+            {% if current_user.is_student %}
+              <a href="{{ url_for('student.dashboard') }}" class="btn btn-outline-indigo btn-lg px-4">
+                <i class="bi bi-grid me-2"></i>My Dashboard
+              </a>
+            {% elif current_user.is_organizer %}
+              <a href="{{ url_for('organizer.create_event') }}" class="btn btn-accent btn-lg px-4">
+                <i class="bi bi-plus-circle me-2"></i>Host an Event
+              </a>
+            {% endif %}
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="col-lg-5">
+        <div class="position-relative">
+          <div class="card-modern p-4 shadow-lg border-0 bg-white" style="border-radius: var(--radius-xl);">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <span class="badge bg-primary-subtle text-primary fw-bold px-3 py-2 rounded-pill">
+                <i class="bi bi-fire me-1"></i> Featured Highlight
+              </span>
+              <span class="badge bg-success-subtle text-success fw-bold px-3 py-2 rounded-pill">Registrations Open</span>
+            </div>
+            {% if upcoming_events and upcoming_events|length > 0 %}
+              {% set featured = upcoming_events[0] %}
+              <div class="rounded-3 overflow-hidden mb-3" style="height: 200px;">
+                <img src="{{ url_for('static', filename='uploads/' + featured.image) }}" class="w-100 h-100 object-fit-cover" alt="{{ featured.title }}">
+              </div>
+              <h4 class="fw-bold mb-1">{{ featured.title }}</h4>
+              <p class="text-secondary small mb-3 line-clamp-2">{{ featured.description|truncate(120) }}</p>
+              <div class="d-flex justify-content-between small text-secondary mb-3">
+                <span><i class="bi bi-calendar3 me-1 text-primary"></i> {{ featured.event_date.strftime('%b %d, %Y') }}</span>
+                <span><i class="bi bi-geo-alt me-1 text-danger"></i> {{ featured.venue }}</span>
+              </div>
+              <div class="d-grid">
+                <a href="{{ url_for('events.details', event_id=featured.id) }}" class="btn btn-primary-indigo">View Details & Register</a>
+              </div>
+            {% else %}
+              <div class="text-center py-4">
+                <i class="bi bi-calendar-event text-secondary fs-1 mb-2"></i>
+                <h5 class="fw-bold">Exciting Events Coming Soon</h5>
+                <p class="text-secondary small">Stay tuned for the newest college workshops and competitions.</p>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Category Pills Row -->
+<section class="py-4 border-bottom bg-white">
+  <div class="container">
+    <div class="d-flex align-items-center gap-2 overflow-x-auto pb-2 flex-nowrap flex-md-wrap justify-content-md-center">
+      <span class="text-secondary small fw-bold text-uppercase me-2">Browse by:</span>
+      <a href="{{ url_for('events.discover') }}" class="btn btn-sm btn-outline-secondary rounded-pill px-3">All Categories</a>
+      <a href="{{ url_for('events.discover', category='Technical') }}" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+        <i class="bi bi-cpu me-1"></i> Technical
+      </a>
+      <a href="{{ url_for('events.discover', category='Cultural') }}" class="btn btn-sm btn-outline-danger rounded-pill px-3">
+        <i class="bi bi-palette me-1"></i> Cultural
+      </a>
+      <a href="{{ url_for('events.discover', category='Sports') }}" class="btn btn-sm btn-outline-success rounded-pill px-3">
+        <i class="bi bi-trophy me-1"></i> Sports
+      </a>
+      <a href="{{ url_for('events.discover', category='Workshops') }}" class="btn btn-sm btn-outline-warning rounded-pill px-3">
+        <i class="bi bi-tools me-1"></i> Workshops
+      </a>
+      <a href="{{ url_for('events.discover', category='Seminars') }}" class="btn btn-sm btn-outline-info rounded-pill px-3">
+        <i class="bi bi-mic me-1"></i> Seminars
+      </a>
+      <a href="{{ url_for('events.discover', category='Competitions') }}" class="btn btn-sm btn-outline-dark rounded-pill px-3">
+        <i class="bi bi-award me-1"></i> Competitions
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- Upcoming Featured Events -->
+<section class="py-5">
+  <div class="container">
+    <div class="d-flex justify-content-between align-items-end mb-4">
+      <div>
+        <span class="text-uppercase fw-bold text-primary small letter-spacing-1">What's Next</span>
+        <h2 class="fw-bold mb-1">Upcoming Campus Events</h2>
+        <p class="text-secondary mb-0">Handpicked activities scheduled across campus departments.</p>
+      </div>
+      <a href="{{ url_for('events.discover') }}" class="btn btn-outline-indigo d-none d-sm-inline-flex align-items-center gap-1">
+        Browse All <i class="bi bi-arrow-right"></i>
+      </a>
+    </div>
+
+    {% if upcoming_events and upcoming_events|length > 0 %}
+      <div class="row g-4">
+        {% for event in upcoming_events %}
+          <div class="col-lg-4 col-md-6">
+            <div class="event-card">
+              <div class="event-card-img-wrap">
+                <img src="{{ url_for('static', filename='uploads/' + event.image) }}" alt="{{ event.title }}" class="event-card-img">
+                <span class="event-badge-category badge-cat-{{ event.category|lower }}">{{ event.category }}</span>
+                <span class="event-seats-pill">
+                  <i class="bi bi-people me-1"></i>{{ event.available_seats }} seats left
+                </span>
+              </div>
+              <div class="event-card-body">
+                <h5 class="event-card-title">{{ event.title }}</h5>
+                <p class="text-secondary small mb-3 flex-grow-1">{{ event.description|truncate(90) }}</p>
+                
+                <div class="event-meta-item">
+                  <i class="bi bi-calendar4-week text-primary"></i>
+                  <span>{{ event.event_date.strftime('%A, %b %d, %Y') }}</span>
+                </div>
+                <div class="event-meta-item">
+                  <i class="bi bi-clock text-primary"></i>
+                  <span>{{ event.start_time.strftime('%I:%M %p') }} - {{ event.end_time.strftime('%I:%M %p') }}</span>
+                </div>
+                <div class="event-meta-item">
+                  <i class="bi bi-geo-alt text-danger"></i>
+                  <span>{{ event.venue }}</span>
+                </div>
+                <div class="event-meta-item mb-3">
+                  <i class="bi bi-person text-secondary"></i>
+                  <span>Organized by: <strong>{{ event.organizer.name }}</strong></span>
+                </div>
+
+                <div class="pt-2 border-top d-flex justify-content-between align-items-center mt-auto">
+                  <span class="small fw-semibold text-muted">
+                    Deadline: {{ event.registration_deadline.strftime('%b %d') }}
+                  </span>
+                  <a href="{{ url_for('events.details', event_id=event.id) }}" class="btn btn-sm btn-primary-indigo">
+                    View Details
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="card-modern p-5 text-center">
+        <i class="bi bi-calendar-x text-muted fs-1 mb-2"></i>
+        <h4 class="fw-bold">No Upcoming Events Right Now</h4>
+        <p class="text-secondary">Be the first organizer to submit a new event for approval!</p>
+        {% if current_user.is_authenticated and current_user.is_organizer %}
+          <div>
+            <a href="{{ url_for('organizer.create_event') }}" class="btn btn-primary-indigo">Create Event</a>
+          </div>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    <div class="text-center mt-4 d-sm-none">
+      <a href="{{ url_for('events.discover') }}" class="btn btn-outline-indigo w-100">
+        Browse All Events <i class="bi bi-arrow-right"></i>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- Live Platform Statistics -->
+<section class="py-5 bg-white border-top border-bottom">
+  <div class="container">
+    <div class="row g-4 text-center">
+      <div class="col-md-3 col-6">
+        <div class="p-3">
+          <div class="stat-value text-gradient-purple mb-1">{{ total_events }}</div>
+          <div class="text-secondary fw-semibold">Live Events</div>
+        </div>
+      </div>
+      <div class="col-md-3 col-6">
+        <div class="p-3">
+          <div class="stat-value text-gradient-purple mb-1">{{ total_students }}</div>
+          <div class="text-secondary fw-semibold">Active Students</div>
+        </div>
+      </div>
+      <div class="col-md-3 col-6">
+        <div class="p-3">
+          <div class="stat-value text-gradient-purple mb-1">{{ total_organizers }}</div>
+          <div class="text-secondary fw-semibold">Clubs & Organizers</div>
+        </div>
+      </div>
+      <div class="col-md-3 col-6">
+        <div class="p-3">
+          <div class="stat-value text-gradient-purple mb-1">{{ total_registrations }}</div>
+          <div class="text-secondary fw-semibold">Total Registrations</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- How CampusConnect Works -->
+<section id="how-it-works" class="py-5">
+  <div class="container">
+    <div class="text-center max-w-xl mx-auto mb-5">
+      <span class="text-uppercase fw-bold text-primary small">Simple & Transparent</span>
+      <h2 class="fw-bold">How CampusConnect Works</h2>
+      <p class="text-secondary">A unified bridge between students, organizers, and administration.</p>
+    </div>
+
+    <div class="row g-4">
+      <div class="col-md-4">
+        <div class="card-modern p-4 h-100 text-center">
+          <div class="rounded-circle bg-primary-subtle text-primary d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px; font-size: 1.5rem;">
+            1
+          </div>
+          <h5 class="fw-bold mb-2">1. Discover & Choose</h5>
+          <p class="text-secondary small">
+            Browse through verified technical workshops, sports tourneys, and cultural festivals with real-time seat tracking.
+          </p>
+        </div>
+      </div>
+
+      <div class="col-md-4">
+        <div class="card-modern p-4 h-100 text-center">
+          <div class="rounded-circle bg-primary-subtle text-primary d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px; font-size: 1.5rem;">
+            2
+          </div>
+          <h5 class="fw-bold mb-2">2. Register with 1-Click</h5>
+          <p class="text-secondary small">
+            Secure your spot instantly. Automated validation ensures no double-booking and checks capacity before confirming.
+          </p>
+        </div>
+      </div>
+
+      <div class="col-md-4">
+        <div class="card-modern p-4 h-100 text-center">
+          <div class="rounded-circle bg-primary-subtle text-primary d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px; font-size: 1.5rem;">
+            3
+          </div>
+          <h5 class="fw-bold mb-2">3. Track & Participate</h5>
+          <p class="text-secondary small">
+            Receive in-app notifications, view attendance status, and manage all your participation history from a single dashboard.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Benefits Section for Students and Organizers -->
+<section class="py-5 bg-white border-top border-bottom">
+  <div class="container">
+    <div class="row g-5 align-items-center">
+      <div class="col-lg-6">
+        <span class="badge bg-primary-subtle text-primary fw-bold mb-2 px-3 py-2 rounded-pill">For Students</span>
+        <h3 class="fw-bold mb-3">Never Miss Out on College Life</h3>
+        <ul class="list-unstyled d-flex flex-column gap-3 mb-4">
+          <li class="d-flex align-items-start gap-3">
+            <i class="bi bi-check-circle-fill text-success fs-5"></i>
+            <div>
+              <strong>Single Source of Truth:</strong> No more scattered WhatsApp forwards or missed paper noticeboards.
+            </div>
+          </li>
+          <li class="d-flex align-items-start gap-3">
+            <i class="bi bi-check-circle-fill text-success fs-5"></i>
+            <div>
+              <strong>Instant Digital Passes:</strong> Access confirmed registrations anytime from your phone.
+            </div>
+          </li>
+          <li class="d-flex align-items-start gap-3">
+            <i class="bi bi-check-circle-fill text-success fs-5"></i>
+            <div>
+              <strong>Live Updates & Alerts:</strong> Instant notifications for schedule changes, venue changes, and attendance records.
+            </div>
+          </li>
+        </ul>
+        <a href="{{ url_for('auth.register') }}" class="btn btn-outline-indigo">Create Student Account</a>
+      </div>
+
+      <div class="col-lg-6">
+        <span class="badge bg-warning-subtle text-warning-emphasis fw-bold mb-2 px-3 py-2 rounded-pill">For Organizers & Clubs</span>
+        <h3 class="fw-bold mb-3">Host Seamless & Impactful Events</h3>
+        <ul class="list-unstyled d-flex flex-column gap-3 mb-4">
+          <li class="d-flex align-items-start gap-3">
+            <i class="bi bi-check-circle-fill text-primary fs-5"></i>
+            <div>
+              <strong>Effortless Participant Management:</strong> Real-time registration monitoring, capacity controls, and waitlist management.
+            </div>
+          </li>
+          <li class="d-flex align-items-start gap-3">
+            <i class="bi bi-check-circle-fill text-primary fs-5"></i>
+            <div>
+              <strong>1-Click Attendance & CSV Export:</strong> Mark student check-ins digitally and download attendee records for reports.
+            </div>
+          </li>
+          <li class="d-flex align-items-start gap-3">
+            <i class="bi bi-check-circle-fill text-primary fs-5"></i>
+            <div>
+              <strong>Event Analytics:</strong> Visualize student participation across departments and academic years.
+            </div>
+          </li>
+        </ul>
+        <a href="{{ url_for('auth.register') }}" class="btn btn-primary-indigo">Join as Organizer</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Call to Action Banner -->
+<section class="py-5" style="background: linear-gradient(135deg, var(--primary-indigo) 0%, var(--secondary-violet) 100%); color: white;">
+  <div class="container text-center py-4">
+    <h2 class="display-6 fw-bold mb-3 text-white">Ready to elevate your campus experience?</h2>
+    <p class="lead text-light opacity-75 max-w-xl mx-auto mb-4">
+      Join hundreds of students and faculty organizers already making events smarter and more connected.
+    </p>
+    <div class="d-flex justify-content-center gap-3">
+      <a href="{{ url_for('events.discover') }}" class="btn btn-light text-primary fw-bold px-4 py-2">
+        Browse Events
+      </a>
+      <a href="{{ url_for('auth.register') }}" class="btn btn-outline-light fw-bold px-4 py-2">
+        Sign Up Free
+      </a>
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block title %}Organizer Analytics - CampusConnect{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 pb-2 border-bottom">
+    <div>
+      <h2 class="fw-bold mb-1">Organizer Analytics</h2>
+      <p class="text-secondary mb-0">Gain actionable insights into event fill rates, categories, and student turnout.</p>
+    </div>
+    <div class="mt-3 mt-md-0">
+      <a href="{{ url_for('organizer.manage_events') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i> My Events
+      </a>
+    </div>
+  </div>
+
+  {% if my_events and my_events|length > 0 %}
+    <div class="row g-4 mb-4">
+      <!-- Chart 1: Registrations vs Capacity -->
+      <div class="col-lg-7">
+        <div class="card-modern p-4 shadow-sm h-100">
+          <h5 class="fw-bold mb-3">Event Fill Rate (Capacity vs Registrations)</h5>
+          <div style="position: relative; height: 320px;">
+            <canvas id="eventFillChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chart 2: Category Distribution -->
+      <div class="col-lg-5">
+        <div class="card-modern p-4 shadow-sm h-100">
+          <h5 class="fw-bold mb-3">Your Event Categories</h5>
+          <div style="position: relative; height: 320px;">
+            <canvas id="categoryChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <div class="card-modern p-5 text-center my-4">
+      <i class="bi bi-bar-chart text-muted fs-1 mb-2"></i>
+      <h4 class="fw-bold">No Event Data Yet</h4>
+      <p class="text-secondary mb-3">Once you publish events and accept registrations, your analytics will appear here.</p>
+      <a href="{{ url_for('organizer.create_event') }}" class="btn btn-primary-indigo">Host an Event</a>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if my_events and my_events|length > 0 %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Chart 1: Fill Rate
+  const ctxFill = document.getElementById('eventFillChart');
+  if (ctxFill) {
+    new Chart(ctxFill, {
+      type: 'bar',
+      data: {
+        labels: {{ event_titles|tojson }},
+        datasets: [
+          {
+            label: 'Registered Students',
+            data: {{ reg_counts|tojson }},
+            backgroundColor: '#3730A3',
+            borderRadius: 6
+          },
+          {
+            label: 'Max Capacity',
+            data: {{ capacities|tojson }},
+            backgroundColor: '#E0E7FF',
+            borderRadius: 6
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: { precision: 0 }
+          }
+        }
+      }
+    });
+  }
+
+  // Chart 2: Category Distribution
+  const ctxCat = document.getElementById('categoryChart');
+  if (ctxCat) {
+    new Chart(ctxCat, {
+      type: 'doughnut',
+      data: {
+        labels: {{ category_labels|tojson }},
+        datasets: [{
+          data: {{ category_values|tojson }},
+          backgroundColor: ['#3730A3', '#7C3AED', '#F59E0B', '#10B981', '#3B82F6', '#EC4899', '#64748B']
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom' }
+        }
+      }
+    });
+  }
+});
+</script>
+{% endif %}
+{% endblock %}

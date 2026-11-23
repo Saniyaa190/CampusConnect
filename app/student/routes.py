@@ -1,78 +1,75 @@
-from functools import wraps
 from datetime import date
-from flask import render_template, redirect, url_for, flash
+from flask import Blueprint, render_template, redirect, url_for
 from flask_login import login_required, current_user
-from app.student import student_bp
-from app.models import Registration, Event
-from app.forms import EmptyForm
+from sqlalchemy import desc
+from app.extensions import db
+from app.models import Event, Registration, Notification
+from app.utils import student_required
 
+student_bp = Blueprint("student", __name__)
 
-def student_required(f):
-    """Ensure authenticated user is a student."""
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if not current_user.is_authenticated:
-            return redirect(url_for('auth.login'))
-        if not current_user.is_student:
-            flash("Access denied: This section is for students only.", "danger")
-            return redirect(url_for('admin.dashboard'))
-        return f(*args, **kwargs)
-    return decorated_function
-
-
-@student_bp.route('/dashboard')
-@login_required
+@student_bp.route("/dashboard")
 @student_required
 def dashboard():
-    """Student overview dashboard."""
     today = date.today()
 
-    # Query all registrations for this student joined with event
-    all_registrations = (
-        Registration.query
-        .filter_by(user_id=current_user.id)
-        .join(Event)
-        .order_by(Event.event_date.asc())
-        .all()
+    # Registrations query
+    registrations = Registration.query.filter_by(
+        student_id=current_user.id,
+        registration_status="confirmed"
+    ).all()
+
+    total_registered = len(registrations)
+
+    # Split into upcoming and past
+    upcoming_registered_events = []
+    completed_events_count = 0
+
+    for reg in registrations:
+        ev = reg.event
+        if ev.event_date >= today:
+            upcoming_registered_events.append(ev)
+        else:
+            completed_events_count += 1
+
+    # Available events to explore (approved, future, not yet registered)
+    registered_event_ids = [reg.event_id for reg in registrations]
+    available_events_query = Event.query.filter(
+        Event.approval_status == "approved",
+        Event.event_date >= today
     )
+    if registered_event_ids:
+        available_events_query = available_events_query.filter(~Event.id.in_(registered_event_ids))
+    
+    available_events = available_events_query.order_by(Event.event_date.asc()).limit(4).all()
+    total_available_count = available_events_query.count()
 
-    active_regs = [r for r in all_registrations if r.is_active]
-    upcoming_regs = [r for r in active_regs if r.event.event_date >= today]
-    past_regs = [r for r in active_regs if r.event.event_date < today]
-    cancelled_regs = [r for r in all_registrations if r.is_cancelled]
-
-    form = EmptyForm()
+    # Recent notifications
+    recent_notifications = Notification.query.filter_by(user_id=current_user.id)\
+        .order_by(desc(Notification.created_at)).limit(5).all()
 
     return render_template(
-        'student_dashboard.html',
-        upcoming_registrations=upcoming_regs,
-        total_registered=len(active_regs),
-        total_upcoming=len(upcoming_regs),
-        total_past=len(past_regs),
-        total_cancelled=len(cancelled_regs),
-        form=form,
-        title="Student Dashboard — CampusConnect"
+        "student/dashboard.html",
+        total_registered=total_registered,
+        upcoming_count=len(upcoming_registered_events),
+        completed_count=completed_events_count,
+        total_available_count=total_available_count,
+        upcoming_events=upcoming_registered_events[:4],
+        available_events=available_events,
+        recent_notifications=recent_notifications
     )
 
 
-@student_bp.route('/registrations')
-@login_required
+@student_bp.route("/my-registrations")
 @student_required
-def registrations():
-    """Detailed personal registrations table with cancellation options."""
-    registrations_list = (
-        Registration.query
-        .filter_by(user_id=current_user.id)
-        .join(Event)
-        .order_by(Event.event_date.desc(), Registration.registration_date.desc())
-        .all()
-    )
-
-    form = EmptyForm()
+def my_registrations():
+    registrations = Registration.query.filter_by(student_id=current_user.id)\
+        .order_by(desc(Registration.registration_date)).all()
+    
+    today = date.today()
 
     return render_template(
-        'my_registrations.html',
-        registrations=registrations_list,
-        form=form,
-        title="My Registrations — CampusConnect"
+        "student/my_registrations.html",
+        registrations=registrations,
+        today=today
     )

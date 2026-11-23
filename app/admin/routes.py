@@ -1,169 +1,260 @@
-from functools import wraps
-from datetime import date
-from flask import render_template, redirect, url_for, flash, request, abort
+import json
+from datetime import date, datetime
+from flask import Blueprint, render_template, redirect, url_for, flash, request, abort
 from flask_login import login_required, current_user
-from app.admin import admin_bp
+from sqlalchemy import desc, func
 from app.extensions import db
-from app.models import Event, User, Registration
-from app.forms import EventForm, EmptyForm
+from app.models import User, Event, Registration, Notification
+from app.utils import admin_required, send_notification
 
+admin_bp = Blueprint("admin", __name__)
 
-def admin_required(f):
-    """Ensure authenticated user is an Administrator."""
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if not current_user.is_authenticated:
-            return redirect(url_for('auth.login', next=request.url))
-        if not current_user.is_admin:
-            abort(403)
-        return f(*args, **kwargs)
-    return decorated_function
-
-
-@admin_bp.route('/dashboard')
-@login_required
+@admin_bp.route("/dashboard")
 @admin_required
 def dashboard():
-    """Admin analytics and event management hub."""
-    today = date.today()
-    all_events = Event.query.order_by(Event.event_date.desc(), Event.start_time.desc()).all()
+    # Basic counts
+    total_students = User.query.filter_by(role="student").count()
+    total_organizers = User.query.filter_by(role="organizer").count()
+    total_events = Event.query.count()
+    approved_events = Event.query.filter_by(approval_status="approved").count()
+    pending_events = Event.query.filter_by(approval_status="pending").count()
+    total_registrations = Registration.query.filter_by(registration_status="confirmed").count()
 
-    total_events = len(all_events)
-    total_students = User.query.filter_by(role='STUDENT').count()
-    total_registrations = Registration.query.filter_by(status='REGISTERED').count()
-    upcoming_events = len([e for e in all_events if e.event_date >= today])
+    # Category distribution for Chart.js
+    category_counts = db.session.query(
+        Event.category, func.count(Event.id)
+    ).group_by(Event.category).all()
+    
+    cat_labels = [c[0] for c in category_counts]
+    cat_values = [c[1] for c in category_counts]
 
-    # Calculate overall capacity and occupancy
-    total_capacity = sum(e.capacity for e in all_events)
-    active_booked = sum(e.active_registrations_count for e in all_events)
-    overall_occupancy = round((active_booked / total_capacity * 100), 1) if total_capacity > 0 else 0
+    # Top events by registrations
+    top_events = db.session.query(
+        Event.title, func.count(Registration.id)
+    ).join(Registration, (Registration.event_id == Event.id) & (Registration.registration_status == "confirmed"))\
+     .group_by(Event.id).order_by(desc(func.count(Registration.id))).limit(6).all()
 
-    # Category distribution stats
-    category_counts = {}
-    for cat in Event.CATEGORIES:
-        category_counts[cat] = sum(1 for e in all_events if e.category == cat)
+    top_event_labels = [t[0][:20] + ("..." if len(t[0]) > 20 else "") for t in top_events]
+    top_event_counts = [t[1] for t in top_events]
 
-    delete_form = EmptyForm()
+    # Monthly event creation counts (last 6 months approximation / distribution)
+    events_by_month = db.session.query(
+        func.strftime("%Y-%m", Event.created_at), func.count(Event.id)
+    ).group_by(func.strftime("%Y-%m", Event.created_at)).order_by(func.strftime("%Y-%m", Event.created_at).asc()).all()
+
+    month_labels = [m[0] for m in events_by_month] if events_by_month else ["Current"]
+    month_counts = [m[1] for m in events_by_month] if events_by_month else [total_events]
+
+    # Monthly registrations
+    regs_by_month = db.session.query(
+        func.strftime("%Y-%m", Registration.registration_date), func.count(Registration.id)
+    ).group_by(func.strftime("%Y-%m", Registration.registration_date)).order_by(func.strftime("%Y-%m", Registration.registration_date).asc()).all()
+
+    reg_month_labels = [r[0] for r in regs_by_month] if regs_by_month else ["Current"]
+    reg_month_counts = [r[1] for r in regs_by_month] if regs_by_month else [total_registrations]
+
+    # Recent pending events for quick action
+    pending_list = Event.query.filter_by(approval_status="pending").order_by(desc(Event.created_at)).limit(5).all()
 
     return render_template(
-        'admin_dashboard.html',
-        events=all_events,
-        total_events=total_events,
+        "admin/dashboard.html",
         total_students=total_students,
+        total_organizers=total_organizers,
+        total_events=total_events,
+        approved_events=approved_events,
+        pending_events=pending_events,
         total_registrations=total_registrations,
-        upcoming_events=upcoming_events,
-        overall_occupancy=overall_occupancy,
-        category_counts=category_counts,
-        delete_form=delete_form,
-        title="Admin Dashboard — CampusConnect"
+        pending_list=pending_list,
+        cat_labels=json.dumps(cat_labels),
+        cat_values=json.dumps(cat_values),
+        top_event_labels=json.dumps(top_event_labels),
+        top_event_counts=json.dumps(top_event_counts),
+        month_labels=json.dumps(month_labels),
+        month_counts=json.dumps(month_counts),
+        reg_month_labels=json.dumps(reg_month_labels),
+        reg_month_counts=json.dumps(reg_month_counts)
     )
 
 
-@admin_bp.route('/events/create', methods=['GET', 'POST'])
-@login_required
+@admin_bp.route("/events")
 @admin_required
-def create_event():
-    """Create a new college event."""
-    form = EventForm()
-    if form.validate_on_submit():
-        event = Event(
-            title=form.title.data.strip(),
-            category=form.category.data,
-            description=form.description.data.strip(),
-            venue=form.venue.data.strip(),
-            event_date=form.event_date.data,
-            start_time=form.start_time.data,
-            capacity=form.capacity.data,
-            created_by=current_user.id
-        )
-        db.session.add(event)
-        db.session.commit()
+def manage_events():
+    status_filter = request.args.get("status", "all")
+    category_filter = request.args.get("category", "all")
+    search = request.args.get("q", "").strip()
 
-        flash(f"Event '{event.title}' has been successfully scheduled!", "success")
-        return redirect(url_for('admin.dashboard'))
+    query = Event.query
+
+    if status_filter != "all":
+        query = query.filter_by(approval_status=status_filter)
+    if category_filter != "all":
+        query = query.filter_by(category=category_filter)
+    if search:
+        query = query.filter(Event.title.ilike(f"%{search}%"))
+
+    events = query.order_by(desc(Event.created_at)).all()
 
     return render_template(
-        'create_event.html',
-        form=form,
-        title="Create Event — CampusConnect"
+        "admin/events.html",
+        events=events,
+        status_filter=status_filter,
+        category_filter=category_filter,
+        search=search
     )
 
 
-@admin_bp.route('/events/<int:event_id>/edit', methods=['GET', 'POST'])
-@login_required
+@admin_bp.route("/events/<int:event_id>/approve", methods=["POST"])
 @admin_required
-def edit_event(event_id):
-    """Edit existing event details."""
-    event = db.get_or_404(Event, event_id)
-    form = EventForm(obj=event)
+def approve_event(event_id):
+    event = db.session.get(Event, event_id)
+    if not event:
+        abort(404)
 
-    if form.validate_on_submit():
-        # Prevent setting capacity below currently active registered count
-        if form.capacity.data < event.active_registrations_count:
-            flash(
-                f"Cannot reduce capacity to {form.capacity.data}. "
-                f"There are currently {event.active_registrations_count} active registered students.",
-                "danger"
-            )
-            return render_template('edit_event.html', form=form, event=event, title=f"Edit {event.title}")
+    event.approval_status = "approved"
 
-        event.title = form.title.data.strip()
-        event.category = form.category.data
-        event.description = form.description.data.strip()
-        event.venue = form.venue.data.strip()
-        event.event_date = form.event_date.data
-        event.start_time = form.start_time.data
-        event.capacity = form.capacity.data
-
-        db.session.commit()
-        flash(f"Event '{event.title}' updated successfully.", "success")
-        return redirect(url_for('admin.dashboard'))
-
-    return render_template(
-        'edit_event.html',
-        form=form,
-        event=event,
-        title=f"Edit {event.title} — CampusConnect"
+    # Send notification to organizer
+    send_notification(
+        event.organizer_id,
+        "Event Approved!",
+        f"Congratulations! Your event '{event.title}' scheduled for {event.event_date.strftime('%B %d, %Y')} has been approved by college administration and is now live."
     )
 
+    db.session.commit()
+    flash(f"Event '{event.title}' has been approved and published.", "success")
+    return redirect(request.referrer or url_for("admin.manage_events"))
 
-@admin_bp.route('/events/<int:event_id>/delete', methods=['POST'])
-@login_required
+
+@admin_bp.route("/events/<int:event_id>/reject", methods=["POST"])
+@admin_required
+def reject_event(event_id):
+    event = db.session.get(Event, event_id)
+    if not event:
+        abort(404)
+
+    reason = request.form.get("reason", "Event does not meet campus activity guidelines.").strip()
+    event.approval_status = "rejected"
+
+    # Send notification to organizer
+    send_notification(
+        event.organizer_id,
+        "Event Rejected",
+        f"Notice: Your event '{event.title}' was rejected by administration. Reason: {reason}"
+    )
+
+    db.session.commit()
+    flash(f"Event '{event.title}' has been rejected.", "warning")
+    return redirect(request.referrer or url_for("admin.manage_events"))
+
+
+@admin_bp.route("/events/<int:event_id>/delete", methods=["POST"])
 @admin_required
 def delete_event(event_id):
-    """Delete an event and cascade-remove its registrations."""
-    form = EmptyForm()
-    if not form.validate_on_submit():
-        flash("Invalid request token.", "danger")
-        return redirect(url_for('admin.dashboard'))
+    event = db.session.get(Event, event_id)
+    if not event:
+        abort(404)
 
-    event = db.get_or_404(Event, event_id)
     event_title = event.title
+    # Notify organizer
+    send_notification(
+        event.organizer_id,
+        "Event Removed by Admin",
+        f"Your event '{event_title}' has been removed by the administrator."
+    )
 
     db.session.delete(event)
     db.session.commit()
+    flash(f"Event '{event_title}' deleted successfully.", "info")
+    return redirect(request.referrer or url_for("admin.manage_events"))
 
-    flash(f"Event '{event_title}' and its registrations were removed.", "info")
-    return redirect(url_for('admin.dashboard'))
 
-
-@admin_bp.route('/events/<int:event_id>/registrations')
-@login_required
+@admin_bp.route("/users")
 @admin_required
-def event_participants(event_id):
-    """View detailed list of student participants for an event."""
-    event = db.get_or_404(Event, event_id)
-    registrations = (
-        Registration.query
-        .filter_by(event_id=event.id)
-        .join(User)
-        .order_by(Registration.registration_date.desc())
-        .all()
-    )
+def manage_users():
+    role_filter = request.args.get("role", "all")
+    search = request.args.get("q", "").strip()
+
+    query = User.query
+
+    if role_filter != "all":
+        query = query.filter_by(role=role_filter)
+    if search:
+        query = query.filter((User.name.ilike(f"%{search}%")) | (User.email.ilike(f"%{search}%")))
+
+    users = query.order_by(desc(User.created_at)).all()
 
     return render_template(
-        'event_participants.html',
-        event=event,
+        "admin/users.html",
+        users=users,
+        role_filter=role_filter,
+        search=search
+    )
+
+
+@admin_bp.route("/users/<int:user_id>/toggle-role", methods=["POST"])
+@admin_required
+def toggle_user_role(user_id):
+    if user_id == current_user.id:
+        flash("You cannot alter your own admin role.", "danger")
+        return redirect(url_for("admin.manage_users"))
+
+    user = db.session.get(User, user_id)
+    if not user:
+        abort(404)
+
+    new_role = request.form.get("new_role")
+    if new_role in ["student", "organizer", "admin"]:
+        old_role = user.role
+        user.role = new_role
+        send_notification(
+            user.id,
+            "Role Updated",
+            f"Your account role on CampusConnect has been changed from {old_role.capitalize()} to {new_role.capitalize()}."
+        )
+        db.session.commit()
+        flash(f"User {user.name}'s role updated to {new_role.capitalize()}.", "success")
+
+    return redirect(url_for("admin.manage_users"))
+
+
+@admin_bp.route("/users/<int:user_id>/delete", methods=["POST"])
+@admin_required
+def delete_user(user_id):
+    if user_id == current_user.id:
+        flash("You cannot delete your own admin account.", "danger")
+        return redirect(url_for("admin.manage_users"))
+
+    user = db.session.get(User, user_id)
+    if not user:
+        abort(404)
+
+    user_name = user.name
+    db.session.delete(user)
+    db.session.commit()
+    flash(f"User '{user_name}' has been deleted.", "info")
+    return redirect(url_for("admin.manage_users"))
+
+
+@admin_bp.route("/registrations")
+@admin_required
+def manage_registrations():
+    event_id = request.args.get("event_id", type=int)
+    search = request.args.get("q", "").strip()
+
+    query = Registration.query
+
+    if event_id:
+        query = query.filter_by(event_id=event_id)
+    if search:
+        query = query.join(User, Registration.student_id == User.id)\
+                     .filter((User.name.ilike(f"%{search}%")) | (User.email.ilike(f"%{search}%")))
+
+    registrations = query.order_by(desc(Registration.registration_date)).limit(100).all()
+    events = Event.query.order_by(Event.title.asc()).all()
+
+    return render_template(
+        "admin/registrations.html",
         registrations=registrations,
-        title=f"Participants — {event.title}"
+        events=events,
+        selected_event_id=event_id,
+        search=search
     )

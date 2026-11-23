@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}Edit {{ event.title }} - CampusConnect{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-9">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="fw-bold mb-0">Edit Event</h3>
+        <a href="{{ url_for('organizer.manage_events') }}" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-arrow-left me-1"></i> Cancel & Back
+        </a>
+      </div>
+
+      <div class="card-modern p-4 p-md-5 shadow-sm">
+        <form method="POST" action="{{ url_for('organizer.edit_event', event_id=event.id) }}" enctype="multipart/form-data">
+          {{ form.hidden_tag() }}
+
+          <div class="mb-3">
+            {{ form.title.label(class="form-label") }}
+            {{ form.title(class="form-control" + (" is-invalid" if form.title.errors else "")) }}
+            {% for error in form.title.errors %}
+              <div class="invalid-feedback">{{ error }}</div>
+            {% endfor %}
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              {{ form.category.label(class="form-label") }}
+              {{ form.category(class="form-select") }}
+            </div>
+            <div class="col-md-6">
+              {{ form.capacity.label(class="form-label") }}
+              {{ form.capacity(class="form-control" + (" is-invalid" if form.capacity.errors else "")) }}
+              {% for error in form.capacity.errors %}
+                <div class="invalid-feedback">{{ error }}</div>
+              {% endfor %}
+            </div>
+          </div>
+
+          <div class="mb-3">
+            {{ form.description.label(class="form-label") }}
+            {{ form.description(class="form-control" + (" is-invalid" if form.description.errors else ""), rows="5") }}
+            {% for error in form.description.errors %}
+              <div class="invalid-feedback">{{ error }}</div>
+            {% endfor %}
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-4">
+              {{ form.event_date.label(class="form-label") }}
+              {{ form.event_date(class="form-control" + (" is-invalid" if form.event_date.errors else ""), type="date") }}
+              {% for error in form.event_date.errors %}
+                <div class="invalid-feedback">{{ error }}</div>
+              {% endfor %}
+            </div>
+            <div class="col-md-4">
+              {{ form.start_time.label(class="form-label") }}
+              {{ form.start_time(class="form-control" + (" is-invalid" if form.start_time.errors else ""), type="time") }}
+              {% for error in form.start_time.errors %}
+                <div class="invalid-feedback">{{ error }}</div>
+              {% endfor %}
+            </div>
+            <div class="col-md-4">
+              {{ form.end_time.label(class="form-label") }}
+              {{ form.end_time(class="form-control" + (" is-invalid" if form.end_time.errors else ""), type="time") }}
+              {% for error in form.end_time.errors %}
+                <div class="invalid-feedback">{{ error }}</div>
+              {% endfor %}
+            </div>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              {{ form.venue.label(class="form-label") }}
+              {{ form.venue(class="form-control" + (" is-invalid" if form.venue.errors else "")) }}
+              {% for error in form.venue.errors %}
+                <div class="invalid-feedback">{{ error }}</div>
+              {% endfor %}
+            </div>
+            <div class="col-md-6">
+              {{ form.registration_deadline.label(class="form-label") }}
+              {{ form.registration_deadline(class="form-control" + (" is-invalid" if form.registration_deadline.errors else ""), type="date") }}
+              {% for error in form.registration_deadline.errors %}
+                <div class="invalid-feedback">{{ error }}</div>
+              {% endfor %}
+            </div>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              {{ form.eligibility.label(class="form-label") }}
+              {{ form.eligibility(class="form-control" + (" is-invalid" if form.eligibility.errors else "")) }}
+              {% for error in form.eligibility.errors %}
+                <div class="invalid-feedback">{{ error }}</div>
+              {% endfor %}
+            </div>
+            <div class="col-md-6">
+              {{ form.contact_email.label(class="form-label") }}
+              {{ form.contact_email(class="form-control" + (" is-invalid" if form.contact_email.errors else "")) }}
+              {% for error in form.contact_email.errors %}
+                <div class="invalid-feedback">{{ error }}</div>
+              {% endfor %}
+            </div>
+          </div>
+
+          <div class="mb-4">
+            {{ form.image.label(class="form-label") }}
+            {{ form.image(class="form-control", id="image") }}
+            <small class="text-muted d-block mt-1">Leave empty to keep current image.</small>
+
+            <div class="mt-3">
+              <span class="small fw-bold text-secondary d-block mb-1">Current Image:</span>
+              <img src="{{ url_for('static', filename='uploads/' + event.image) }}" alt="Current" class="rounded-3 border object-fit-cover shadow-sm" style="max-height: 180px;">
+            </div>
+
+            <div id="image-preview-container" class="mt-3 d-none">
+              <span class="small fw-bold text-secondary d-block mb-1">New Selected Image Preview:</span>
+              <img id="image-preview" src="#" alt="Preview" class="rounded-3 border object-fit-cover shadow-sm" style="max-height: 180px;">
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-end gap-2 pt-3 border-top">
+            <a href="{{ url_for('organizer.manage_events') }}" class="btn btn-outline-secondary">Discard Changes</a>
+            {{ form.submit(class="btn btn-primary-indigo px-4", value="Save Changes") }}
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

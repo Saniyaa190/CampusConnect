@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block title %}Organizer Dashboard - CampusConnect{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <!-- Header -->
+  <div class="card-modern p-4 p-md-5 mb-4 shadow-sm" style="background: linear-gradient(135deg, rgba(124, 58, 237, 0.08) 0%, rgba(55, 48, 163, 0.08) 100%);">
+    <div class="row align-items-center">
+      <div class="col-md-8">
+        <span class="badge bg-purple text-uppercase px-3 py-1 mb-2" style="background-color: var(--secondary-violet); color: white;">Organizer Hub</span>
+        <h2 class="fw-bold mb-1">Hello, {{ current_user.name }}!</h2>
+        <p class="text-secondary mb-0">
+          <i class="bi bi-building me-1 text-primary"></i> {{ current_user.department or 'Event Organizer' }} &bull; Manage your events, track attendee enrollments, and coordinate campus activities.
+        </p>
+      </div>
+      <div class="col-md-4 text-md-end mt-3 mt-md-0">
+        <a href="{{ url_for('organizer.create_event') }}" class="btn btn-primary-indigo btn-lg">
+          <i class="bi bi-plus-circle me-1"></i> Create New Event
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats Grid -->
+  <div class="row g-3 mb-4">
+    <div class="col-lg-3 col-sm-6">
+      <div class="stat-card">
+        <div>
+          <div class="stat-value text-indigo">{{ total_events }}</div>
+          <div class="stat-label">Total Events</div>
+        </div>
+        <div class="stat-icon stat-icon-indigo">
+          <i class="bi bi-calendar3"></i>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-3 col-sm-6">
+      <div class="stat-card">
+        <div>
+          <div class="stat-value text-orange">{{ pending_approvals }}</div>
+          <div class="stat-label">Pending Approval</div>
+        </div>
+        <div class="stat-icon stat-icon-orange">
+          <i class="bi bi-hourglass-split"></i>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-3 col-sm-6">
+      <div class="stat-card">
+        <div>
+          <div class="stat-value text-green">{{ approved_events }}</div>
+          <div class="stat-label">Approved & Live</div>
+        </div>
+        <div class="stat-icon stat-icon-green">
+          <i class="bi bi-patch-check"></i>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-3 col-sm-6">
+      <div class="stat-card">
+        <div>
+          <div class="stat-value text-purple">{{ total_registrations }}</div>
+          <div class="stat-label">Total Registrations</div>
+        </div>
+        <div class="stat-icon stat-icon-purple">
+          <i class="bi bi-people"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Left: Your Upcoming Events -->
+    <div class="col-lg-7">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="fw-bold mb-0">Upcoming Events</h4>
+        <a href="{{ url_for('organizer.manage_events') }}" class="small fw-bold text-decoration-none text-primary">Manage All Events</a>
+      </div>
+
+      {% if upcoming_events and upcoming_events|length > 0 %}
+        <div class="d-flex flex-column gap-3">
+          {% for ev in upcoming_events %}
+            <div class="card-modern p-3 d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3">
+              <div class="d-flex align-items-center gap-3">
+                <div class="rounded-3 overflow-hidden d-none d-sm-block" style="width: 70px; height: 70px; flex-shrink: 0;">
+                  <img src="{{ url_for('static', filename='uploads/' + ev.image) }}" alt="{{ ev.title }}" class="w-100 h-100 object-fit-cover">
+                </div>
+                <div>
+                  <h6 class="fw-bold mb-1">
+                    <a href="{{ url_for('events.details', event_id=ev.id) }}" class="text-decoration-none text-dark">{{ ev.title }}</a>
+                  </h6>
+                  <div class="small text-secondary mb-1">
+                    <i class="bi bi-calendar3 me-1 text-primary"></i> {{ ev.event_date.strftime('%b %d, %Y') }} &bull; {{ ev.venue }}
+                  </div>
+                  <span class="badge badge-cat-{{ ev.category|lower }} small">{{ ev.category }}</span>
+                  <span class="badge bg-light text-dark border small ms-1">{{ ev.registered_count }} / {{ ev.capacity }} seats filled</span>
+                </div>
+              </div>
+
+              <div class="d-flex gap-2">
+                <a href="{{ url_for('organizer.event_attendees', event_id=ev.id) }}" class="btn btn-sm btn-outline-primary" title="Attendees">
+                  <i class="bi bi-people"></i>
+                </a>
+                <a href="{{ url_for('organizer.edit_event', event_id=ev.id) }}" class="btn btn-sm btn-outline-secondary" title="Edit">
+                  <i class="bi bi-pencil"></i>
+                </a>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="card-modern p-4 text-center">
+          <i class="bi bi-calendar-plus text-muted fs-2 mb-2"></i>
+          <h5 class="fw-bold">No upcoming approved events</h5>
+          <p class="text-secondary small mb-3">Host your next hackathon or workshop today.</p>
+          <a href="{{ url_for('organizer.create_event') }}" class="btn btn-sm btn-primary-indigo">Create Event</a>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Right: Recent Registrations Feed -->
+    <div class="col-lg-5">
+      <div class="card-modern p-4 shadow-sm">
+        <h5 class="fw-bold mb-3">Recent Student Registrations</h5>
+
+        {% if recent_registrations and recent_registrations|length > 0 %}
+          <div class="d-flex flex-column gap-3">
+            {% for reg in recent_registrations %}
+              <div class="d-flex justify-content-between align-items-center p-2 rounded-3 bg-light">
+                <div class="d-flex align-items-center gap-2">
+                  <div class="rounded-circle bg-white border text-primary fw-bold d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
+                    {{ reg.student.name[0]|upper }}
+                  </div>
+                  <div>
+                    <div class="fw-semibold small">{{ reg.student.name }}</div>
+                    <div class="text-secondary" style="font-size: 0.75rem;">
+                      {{ reg.event.title|truncate(22) }}
+                    </div>
+                  </div>
+                </div>
+                <div class="text-end">
+                  <span class="badge bg-success-subtle text-success small">Confirmed</span>
+                  <div class="text-muted" style="font-size: 0.7rem;">{{ reg.registration_date.strftime('%b %d') }}</div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="text-center py-4 text-muted">
+            <i class="bi bi-person-x fs-3 mb-1"></i>
+            <p class="small mb-0">No registrations yet</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

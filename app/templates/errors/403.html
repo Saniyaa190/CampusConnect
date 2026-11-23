@@ -1,20 +1,29 @@
 {% extends "base.html" %}
-
+{% block title %}Access Denied (403) - CampusConnect{% endblock %}
 {% block content %}
-<div class="container" style="padding: 5rem 1.5rem; text-align: center; max-width: 640px;">
-  <div style="font-size: 4.5rem; line-height: 1; margin-bottom: 1rem;">🔒</div>
-  <span class="badge-cat Cultural" style="margin-bottom: 0.75rem; display: inline-block;">Error 403</span>
-  <h1 style="font-size: 2.5rem; color: var(--primary-purple); margin-bottom: 1rem;">Access Forbidden</h1>
-  <p style="font-size: 1.1rem; color: var(--color-slate); line-height: 1.6; margin-bottom: 2rem;">
-    You do not possess the necessary administrative privileges or permissions to access this protected area.
-  </p>
-  <div style="display: flex; justify-content: center; gap: 1rem;">
-    <a href="{{ url_for('main.home') }}" class="btn btn-primary">Return Home</a>
-    {% if current_user.is_authenticated and current_user.is_student %}
-      <a href="{{ url_for('student.dashboard') }}" class="btn btn-outline">Go to Student Hub</a>
-    {% else %}
-      <a href="{{ url_for('auth.login') }}" class="btn btn-outline">Sign In as Admin</a>
-    {% endif %}
+<div class="container py-5 text-center">
+  <div class="card-modern p-5 max-w-lg mx-auto shadow-sm my-5" style="max-width: 550px;">
+    <div class="rounded-circle bg-danger-subtle text-danger d-inline-flex align-items-center justify-content-center mb-4" style="width: 80px; height: 80px;">
+      <i class="bi bi-shield-x fs-1"></i>
+    </div>
+    <h2 class="fw-bold mb-2">403 - Access Denied</h2>
+    <p class="text-secondary mb-4">
+      You don't have permission to access this resource or page. Please make sure you are logged into an authorized account with the appropriate role.
+    </p>
+    <div class="d-flex justify-content-center gap-2">
+      <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">Go to Homepage</a>
+      {% if current_user.is_authenticated %}
+        {% if current_user.is_student %}
+          <a href="{{ url_for('student.dashboard') }}" class="btn btn-primary-indigo">My Dashboard</a>
+        {% elif current_user.is_organizer %}
+          <a href="{{ url_for('organizer.dashboard') }}" class="btn btn-primary-indigo">Organizer Dashboard</a>
+        {% elif current_user.is_admin %}
+          <a href="{{ url_for('admin.dashboard') }}" class="btn btn-primary-indigo">Admin Panel</a>
+        {% endif %}
+      {% else %}
+        <a href="{{ url_for('auth.login') }}" class="btn btn-primary-indigo">Log In</a>
+      {% endif %}
+    </div>
   </div>
 </div>
 {% endblock %}

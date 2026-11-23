@@ -1,1 +1,1 @@
-# Tests package for CampusConnect
+# Test package initializer

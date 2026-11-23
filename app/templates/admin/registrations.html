@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Registrations - CampusConnect Admin{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 pb-2 border-bottom">
+    <div>
+      <h2 class="fw-bold mb-1">Campus Registrations Monitor</h2>
+      <p class="text-secondary mb-0">Global log of student signups and confirmed attendance across all events.</p>
+    </div>
+  </div>
+
+  <!-- Filter Bar -->
+  <div class="card-modern p-3 mb-4 shadow-sm bg-white">
+    <form method="GET" action="{{ url_for('admin.manage_registrations') }}">
+      <div class="row g-2 align-items-center">
+        <div class="col-md-5">
+          <div class="input-group">
+            <span class="input-group-text bg-light border-end-0"><i class="bi bi-search text-muted"></i></span>
+            <input type="text" name="q" class="form-control border-start-0" placeholder="Search student name or email..." value="{{ search }}">
+          </div>
+        </div>
+
+        <div class="col-md-5">
+          <select name="event_id" class="form-select">
+            <option value="">All Events</option>
+            {% for ev in events %}
+              <option value="{{ ev.id }}" {% if selected_event_id == ev.id %}selected{% endif %}>{{ ev.title }} ({{ ev.event_date.strftime('%b %d') }})</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-md-2 d-grid">
+          <button type="submit" class="btn btn-primary-indigo">Filter</button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  {% if registrations and registrations|length > 0 %}
+    <div class="card-modern shadow-sm overflow-hidden">
+      <div class="table-responsive">
+        <table class="table table-modern table-hover mb-0">
+          <thead>
+            <tr>
+              <th>Registration ID</th>
+              <th>Student Name</th>
+              <th>Student Email</th>
+              <th>Event Title</th>
+              <th>Registration Date</th>
+              <th>Status</th>
+              <th>Attendance</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for reg in registrations %}
+              <tr>
+                <td>#REG-{{ reg.id }}</td>
+                <td>
+                  <div class="fw-bold">{{ reg.student.name }}</div>
+                  <small class="text-muted">{{ reg.student.department or '' }}</small>
+                </td>
+                <td>
+                  <a href="mailto:{{ reg.student.email }}" class="text-secondary text-decoration-none">{{ reg.student.email }}</a>
+                </td>
+                <td>
+                  <a href="{{ url_for('events.details', event_id=reg.event.id) }}" class="fw-semibold text-dark text-decoration-none">
+                    {{ reg.event.title }}
+                  </a>
+                  <div class="small text-muted">{{ reg.event.event_date.strftime('%b %d, %Y') }}</div>
+                </td>
+                <td>
+                  <span class="small text-muted">{{ reg.registration_date.strftime('%b %d, %Y %I:%M %p') }}</span>
+                </td>
+                <td>
+                  {% if reg.registration_status == 'confirmed' %}
+                    <span class="badge bg-success-subtle text-success fw-bold px-2 py-1">Confirmed</span>
+                  {% else %}
+                    <span class="badge bg-secondary-subtle text-secondary fw-bold px-2 py-1">Cancelled</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if reg.attendance_status == 'attended' %}
+                    <span class="badge bg-primary text-white fw-bold px-2 py-1">Attended</span>
+                  {% else %}
+                    <span class="badge bg-light text-muted border px-2 py-1">Not Attended</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% else %}
+    <div class="card-modern p-5 text-center my-4">
+      <i class="bi bi-card-checklist text-muted fs-2 mb-2"></i>
+      <h4 class="fw-bold">No registrations found</h4>
+      <p class="text-secondary">Try searching for a different student or event.</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

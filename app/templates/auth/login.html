@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}Sign In - CampusConnect{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-5 col-md-8">
+      <div class="card-modern p-4 p-md-5 shadow-md">
+        <div class="text-center mb-4">
+          <div class="navbar-brand-icon mx-auto mb-3" style="width: 48px; height: 48px; font-size: 1.3rem;">
+            <i class="bi bi-mortarboard-fill"></i>
+          </div>
+          <h3 class="fw-bold mb-1">Welcome Back</h3>
+          <p class="text-secondary small">Sign in to your CampusConnect account</p>
+        </div>
+
+        <form method="POST" action="{{ url_for('auth.login', next=request.args.get('next')) }}">
+          {{ form.hidden_tag() }}
+
+          <div class="mb-3">
+            {{ form.email.label(class="form-label") }}
+            {{ form.email(class="form-control" + (" is-invalid" if form.email.errors else ""), id="login-email", placeholder="yourname@campus.edu") }}
+            {% for error in form.email.errors %}
+              <div class="invalid-feedback">{{ error }}</div>
+            {% endfor %}
+          </div>
+
+          <div class="mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              {{ form.password.label(class="form-label mb-0") }}
+            </div>
+            {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else ""), id="login-password", placeholder="••••••••") }}
+            {% for error in form.password.errors %}
+              <div class="invalid-feedback">{{ error }}</div>
+            {% endfor %}
+          </div>
+
+          <div class="mb-4 form-check">
+            {{ form.remember(class="form-check-input", id="rememberMe") }}
+            <label class="form-check-label text-secondary small" for="rememberMe">Remember my login</label>
+          </div>
+
+          <div class="d-grid mb-3">
+            {{ form.submit(class="btn btn-primary-indigo btn-lg") }}
+          </div>
+        </form>
+
+        <!-- Quick Demo Credentials Box -->
+        <div class="p-3 bg-light rounded-3 border mt-4">
+          <div class="small fw-bold text-secondary mb-2 text-uppercase letter-spacing-1">
+            <i class="bi bi-key-fill text-warning me-1"></i> Quick Demo Logins:
+          </div>
+          <div class="d-flex flex-wrap gap-2">
+            <button type="button" class="btn btn-sm btn-outline-dark" onclick="fillLogin('admin@campusconnect.edu', 'Admin@123')">
+              <i class="bi bi-shield-lock me-1"></i> Admin
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-primary" onclick="fillLogin('techclub@campusconnect.edu', 'Organizer@123')">
+              <i class="bi bi-person-workspace me-1"></i> Organizer
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-success" onclick="fillLogin('aarav.sharma@campusconnect.edu', 'Student@123')">
+              <i class="bi bi-person-badge me-1"></i> Student
+            </button>
+          </div>
+        </div>
+
+        <div class="text-center mt-4">
+          <p class="text-secondary small mb-0">
+            Don't have an account? <a href="{{ url_for('auth.register') }}" class="text-primary fw-bold text-decoration-none">Create an account</a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function fillLogin(email, password) {
+  document.getElementById('login-email').value = email;
+  document.getElementById('login-password').value = password;
+}
+</script>
+{% endblock %}

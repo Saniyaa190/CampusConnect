@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}Create Account - CampusConnect{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-6 col-md-9">
+      <div class="card-modern p-4 p-md-5 shadow-md">
+        <div class="text-center mb-4">
+          <div class="navbar-brand-icon mx-auto mb-3" style="width: 48px; height: 48px; font-size: 1.3rem;">
+            <i class="bi bi-person-plus-fill"></i>
+          </div>
+          <h3 class="fw-bold mb-1">Create an Account</h3>
+          <p class="text-secondary small">Join your campus community to discover and manage events</p>
+        </div>
+
+        <form method="POST" action="{{ url_for('auth.register') }}">
+          {{ form.hidden_tag() }}
+
+          <div class="mb-3">
+            {{ form.name.label(class="form-label") }}
+            {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else ""), placeholder="e.g. Aarav Sharma") }}
+            {% for error in form.name.errors %}
+              <div class="invalid-feedback">{{ error }}</div>
+            {% endfor %}
+          </div>
+
+          <div class="mb-3">
+            {{ form.email.label(class="form-label") }}
+            {{ form.email(class="form-control" + (" is-invalid" if form.email.errors else ""), placeholder="e.g. aarav@campusconnect.edu") }}
+            {% for error in form.email.errors %}
+              <div class="invalid-feedback">{{ error }}</div>
+            {% endfor %}
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-sm-6">
+              {{ form.role.label(class="form-label") }}
+              {{ form.role(class="form-select", id="roleSelect") }}
+            </div>
+            <div class="col-sm-6" id="yearGroup">
+              {{ form.year.label(class="form-label") }}
+              {{ form.year(class="form-select") }}
+            </div>
+          </div>
+
+          <div class="mb-3">
+            {{ form.department.label(class="form-label") }}
+            {{ form.department(class="form-select") }}
+          </div>
+
+          <div class="row g-3 mb-4">
+            <div class="col-sm-6">
+              {{ form.password.label(class="form-label") }}
+              {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else ""), placeholder="At least 6 characters") }}
+              {% for error in form.password.errors %}
+                <div class="invalid-feedback">{{ error }}</div>
+              {% endfor %}
+            </div>
+            <div class="col-sm-6">
+              {{ form.confirm_password.label(class="form-label") }}
+              {{ form.confirm_password(class="form-control" + (" is-invalid" if form.confirm_password.errors else ""), placeholder="Repeat password") }}
+              {% for error in form.confirm_password.errors %}
+                <div class="invalid-feedback">{{ error }}</div>
+              {% endfor %}
+            </div>
+          </div>
+
+          <div class="d-grid mb-3">
+            {{ form.submit(class="btn btn-primary-indigo btn-lg") }}
+          </div>
+        </form>
+
+        <div class="text-center mt-4">
+          <p class="text-secondary small mb-0">
+            Already registered? <a href="{{ url_for('auth.login') }}" class="text-primary fw-bold text-decoration-none">Log in here</a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const roleSelect = document.getElementById('roleSelect');
+  const yearGroup = document.getElementById('yearGroup');
+  
+  function updateRoleFields() {
+    if (roleSelect.value === 'organizer') {
+      yearGroup.style.display = 'none';
+    } else {
+      yearGroup.style.display = 'block';
+    }
+  }
+  
+  if (roleSelect && yearGroup) {
+    roleSelect.addEventListener('change', updateRoleFields);
+    updateRoleFields();
+  }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+
+{% block title %}Discover Events - CampusConnect{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <!-- Header -->
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 pb-2 border-bottom">
+    <div>
+      <h2 class="fw-bold mb-1">Discover Campus Events</h2>
+      <p class="text-secondary mb-0">Browse through hackathons, workshops, fests, and competitions.</p>
+    </div>
+    {% if current_user.is_authenticated and current_user.is_organizer %}
+      <div class="mt-3 mt-md-0">
+        <a href="{{ url_for('organizer.create_event') }}" class="btn btn-primary-indigo">
+          <i class="bi bi-plus-lg me-1"></i> Host New Event
+        </a>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Search and Multi-filter Card -->
+  <div class="card-modern p-3 mb-4 shadow-sm bg-white">
+    <form method="GET" action="{{ url_for('events.discover') }}">
+      <div class="row g-2 align-items-center">
+        <!-- Search Input -->
+        <div class="col-lg-4 col-md-6">
+          <div class="input-group">
+            <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-search"></i></span>
+            <input type="text" name="q" class="form-control border-start-0" placeholder="Search event title or keywords..." value="{{ search_query }}">
+          </div>
+        </div>
+
+        <!-- Category Dropdown -->
+        <div class="col-lg-2 col-md-3 col-6">
+          <select name="category" class="form-select">
+            <option value="All" {% if not selected_category or selected_category == 'All' %}selected{% endif %}>All Categories</option>
+            <option value="Technical" {% if selected_category == 'Technical' %}selected{% endif %}>Technical</option>
+            <option value="Cultural" {% if selected_category == 'Cultural' %}selected{% endif %}>Cultural</option>
+            <option value="Sports" {% if selected_category == 'Sports' %}selected{% endif %}>Sports</option>
+            <option value="Workshops" {% if selected_category == 'Workshops' %}selected{% endif %}>Workshops</option>
+            <option value="Seminars" {% if selected_category == 'Seminars' %}selected{% endif %}>Seminars</option>
+            <option value="Competitions" {% if selected_category == 'Competitions' %}selected{% endif %}>Competitions</option>
+            <option value="Other" {% if selected_category == 'Other' %}selected{% endif %}>Other</option>
+          </select>
+        </div>
+
+        <!-- Venue Dropdown -->
+        <div class="col-lg-2 col-md-3 col-6">
+          <select name="venue" class="form-select">
+            <option value="" {% if not selected_venue %}selected{% endif %}>All Venues</option>
+            {% for v in venue_list %}
+              <option value="{{ v }}" {% if selected_venue == v %}selected{% endif %}>{{ v }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Date Range Filter -->
+        <div class="col-lg-2 col-md-4 col-6">
+          <select name="date_filter" class="form-select">
+            <option value="upcoming" {% if date_filter == 'upcoming' %}selected{% endif %}>Upcoming Events</option>
+            <option value="all" {% if date_filter == 'all' %}selected{% endif %}>All Dates</option>
+            <option value="past" {% if date_filter == 'past' %}selected{% endif %}>Past Events</option>
+          </select>
+        </div>
+
+        <!-- Sort Filter -->
+        <div class="col-lg-2 col-md-4 col-6">
+          <select name="sort" class="form-select">
+            <option value="upcoming" {% if sort == 'upcoming' %}selected{% endif %}>Sort: Event Date</option>
+            <option value="newest" {% if sort == 'newest' %}selected{% endif %}>Sort: Newly Added</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top">
+        <span class="small text-secondary">
+          Showing <strong>{{ events_pagination.total }}</strong> event{{ 's' if events_pagination.total != 1 else '' }}
+        </span>
+        <div class="d-flex gap-2">
+          {% if search_query or (selected_category and selected_category != 'All') or selected_venue or date_filter != 'upcoming' or sort != 'upcoming' %}
+            <a href="{{ url_for('events.discover') }}" class="btn btn-sm btn-outline-secondary">
+              <i class="bi bi-x-circle me-1"></i> Reset Filters
+            </a>
+          {% endif %}
+          <button type="submit" class="btn btn-sm btn-primary-indigo px-3">
+            Apply Filters
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- Events Grid -->
+  {% if events_pagination.items and events_pagination.items|length > 0 %}
+    <div class="row g-4">
+      {% for event in events_pagination.items %}
+        <div class="col-lg-4 col-md-6">
+          <div class="event-card">
+            <div class="event-card-img-wrap">
+              <img src="{{ url_for('static', filename='uploads/' + event.image) }}" alt="{{ event.title }}" class="event-card-img">
+              <span class="event-badge-category badge-cat-{{ event.category|lower }}">{{ event.category }}</span>
+              <span class="event-seats-pill">
+                {% if event.is_full %}
+                  <span class="text-danger fw-bold"><i class="bi bi-exclamation-circle me-1"></i>Full</span>
+                {% else %}
+                  <i class="bi bi-people me-1"></i>{{ event.available_seats }} seats left
+                {% endif %}
+              </span>
+            </div>
+            <div class="event-card-body">
+              <h5 class="event-card-title">{{ event.title }}</h5>
+              <p class="text-secondary small mb-3 flex-grow-1">{{ event.description|truncate(100) }}</p>
+              
+              <div class="event-meta-item">
+                <i class="bi bi-calendar4-week text-primary"></i>
+                <span>{{ event.event_date.strftime('%a, %b %d, %Y') }}</span>
+              </div>
+              <div class="event-meta-item">
+                <i class="bi bi-clock text-primary"></i>
+                <span>{{ event.start_time.strftime('%I:%M %p') }} - {{ event.end_time.strftime('%I:%M %p') }}</span>
+              </div>
+              <div class="event-meta-item">
+                <i class="bi bi-geo-alt text-danger"></i>
+                <span>{{ event.venue }}</span>
+              </div>
+              <div class="event-meta-item mb-3">
+                <i class="bi bi-person text-secondary"></i>
+                <span>Organizer: <strong>{{ event.organizer.name }}</strong></span>
+              </div>
+
+              <div class="pt-2 border-top d-flex justify-content-between align-items-center mt-auto">
+                <div>
+                  {% if event.is_past %}
+                    <span class="badge bg-secondary-subtle text-secondary small">Concluded</span>
+                  {% elif event.is_deadline_passed %}
+                    <span class="badge bg-danger-subtle text-danger small">Registration Closed</span>
+                  {% elif event.is_full %}
+                    <span class="badge bg-warning-subtle text-warning-emphasis small">Sold Out</span>
+                  {% else %}
+                    <span class="badge bg-success-subtle text-success small">Open</span>
+                  {% endif %}
+                </div>
+                <a href="{{ url_for('events.details', event_id=event.id) }}" class="btn btn-sm btn-primary-indigo">
+                  View Details
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if events_pagination.pages > 1 %}
+      <nav class="mt-5" aria-label="Events pagination">
+        <ul class="pagination justify-content-center">
+          <li class="page-item {% if not events_pagination.has_prev %}disabled{% endif %}">
+            <a class="page-link" href="{{ url_for('events.discover', page=events_pagination.prev_num, q=search_query, category=selected_category, venue=selected_venue, date_filter=date_filter, sort=sort) }}" aria-label="Previous">
+              <span aria-hidden="true">&laquo; Previous</span>
+            </a>
+          </li>
+
+          {% for p in events_pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+            {% if p %}
+              <li class="page-item {% if p == events_pagination.page %}active{% endif %}">
+                <a class="page-link" href="{{ url_for('events.discover', page=p, q=search_query, category=selected_category, venue=selected_venue, date_filter=date_filter, sort=sort) }}">{{ p }}</a>
+              </li>
+            {% else %}
+              <li class="page-item disabled"><span class="page-link">&hellip;</span></li>
+            {% endif %}
+          {% endfor %}
+
+          <li class="page-item {% if not events_pagination.has_next %}disabled{% endif %}">
+            <a class="page-link" href="{{ url_for('events.discover', page=events_pagination.next_num, q=search_query, category=selected_category, venue=selected_venue, date_filter=date_filter, sort=sort) }}" aria-label="Next">
+              <span aria-hidden="true">Next &raquo;</span>
+            </a>
+          </li>
+        </ul>
+      </nav>
+    {% endif %}
+
+  {% else %}
+    <!-- Empty State -->
+    <div class="card-modern p-5 text-center my-4">
+      <div class="rounded-circle bg-light d-inline-flex align-items-center justify-content-center mb-3" style="width: 70px; height: 70px;">
+        <i class="bi bi-search text-muted fs-2"></i>
+      </div>
+      <h4 class="fw-bold mb-2">No Matching Events Found</h4>
+      <p class="text-secondary mb-4 max-w-md mx-auto">
+        We couldn't find any events matching your selected search query or filters. Try adjusting your category or date options.
+      </p>
+      <a href="{{ url_for('events.discover') }}" class="btn btn-outline-indigo">Clear All Filters</a>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}
