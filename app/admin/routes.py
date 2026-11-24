@@ -38,11 +38,7 @@ def dashboard():
     top_event_labels = [t[0][:20] + ("..." if len(t[0]) > 20 else "") for t in top_events]
     top_event_counts = [t[1] for t in top_events]
 
-<<<<<<< HEAD
     # Monthly event creation counts
-=======
-        # Monthly event creation counts
->>>>>>> 7286e92 (Fix admin dashboard database compatibility)
     event_dates = db.session.query(Event.created_at).all()
 
     events_by_month = Counter(
