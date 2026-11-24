@@ -2,6 +2,8 @@
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+
+
 def normalize_database_url(url):
     if url.startswith("postgres://"):
         return url.replace(
@@ -18,6 +20,8 @@ def normalize_database_url(url):
         )
 
     return url
+
+
 BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / ".env")
 
@@ -29,7 +33,6 @@ class Config:
     )
 
     IS_VERCEL = os.getenv("VERCEL") == "1"
-
     database_url = os.getenv("DATABASE_URL")
 
     if IS_VERCEL:
@@ -39,7 +42,9 @@ class Config:
                 "Configure a PostgreSQL database in Vercel."
             )
 
-       SQLALCHEMY_DATABASE_URI = normalize_database_url(database_url)
+        SQLALCHEMY_DATABASE_URI = normalize_database_url(
+            database_url
+        )
 
         UPLOAD_FOLDER = Path("/tmp/uploads")
         UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
@@ -48,12 +53,12 @@ class Config:
         db_path = BASE_DIR / "instance" / "campusconnect.db"
         db_path.parent.mkdir(parents=True, exist_ok=True)
 
-       SQLALCHEMY_DATABASE_URI = normalize_database_url(
-    os.getenv(
-        "DATABASE_URL",
-        f"sqlite:///{db_path.as_posix()}"
-    )
-)
+        SQLALCHEMY_DATABASE_URI = normalize_database_url(
+            os.getenv(
+                "DATABASE_URL",
+                f"sqlite:///{db_path.as_posix()}"
+            )
+        )
 
         UPLOAD_FOLDER = BASE_DIR / "app" / "static" / "uploads"
         UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
