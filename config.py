@@ -39,21 +39,7 @@ class Config:
                 "Configure a PostgreSQL database in Vercel."
             )
 
-        # Normalize PostgreSQL URL for psycopg 3
-        if database_url.startswith("postgres://"):
-            database_url = database_url.replace(
-                "postgres://",
-                "postgresql+psycopg://",
-                1
-            )
-        elif database_url.startswith("postgresql://"):
-            database_url = database_url.replace(
-                "postgresql://",
-                "postgresql+psycopg://",
-                1
-            )
-
-        SQLALCHEMY_DATABASE_URI = database_url
+       SQLALCHEMY_DATABASE_URI = normalize_database_url(database_url)
 
         UPLOAD_FOLDER = Path("/tmp/uploads")
         UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
@@ -62,10 +48,12 @@ class Config:
         db_path = BASE_DIR / "instance" / "campusconnect.db"
         db_path.parent.mkdir(parents=True, exist_ok=True)
 
-        SQLALCHEMY_DATABASE_URI = os.getenv(
-            "DATABASE_URL",
-            f"sqlite:///{db_path.as_posix()}"
-        )
+       SQLALCHEMY_DATABASE_URI = normalize_database_url(
+    os.getenv(
+        "DATABASE_URL",
+        f"sqlite:///{db_path.as_posix()}"
+    )
+)
 
         UPLOAD_FOLDER = BASE_DIR / "app" / "static" / "uploads"
         UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
