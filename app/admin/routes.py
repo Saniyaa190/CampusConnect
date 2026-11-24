@@ -1,5 +1,6 @@
 import json
 from datetime import date, datetime
+from collections import Counter
 from flask import Blueprint, render_template, redirect, url_for, flash, request, abort
 from flask_login import login_required, current_user
 from sqlalchemy import desc, func
@@ -37,21 +38,39 @@ def dashboard():
     top_event_labels = [t[0][:20] + ("..." if len(t[0]) > 20 else "") for t in top_events]
     top_event_counts = [t[1] for t in top_events]
 
-    # Monthly event creation counts (last 6 months approximation / distribution)
-    events_by_month = db.session.query(
-        func.strftime("%Y-%m", Event.created_at), func.count(Event.id)
-    ).group_by(func.strftime("%Y-%m", Event.created_at)).order_by(func.strftime("%Y-%m", Event.created_at).asc()).all()
+    # Monthly event creation counts
+    event_dates = db.session.query(Event.created_at).all()
 
-    month_labels = [m[0] for m in events_by_month] if events_by_month else ["Current"]
-    month_counts = [m[1] for m in events_by_month] if events_by_month else [total_events]
+    events_by_month = Counter(
+        created_at.strftime("%Y-%m")
+        for (created_at,) in event_dates
+        if created_at is not None
+    )
+
+    month_labels = sorted(events_by_month.keys()) if events_by_month else ["Current"]
+    month_counts = (
+        [events_by_month[m] for m in month_labels]
+        if events_by_month else [total_events]
+    )
 
     # Monthly registrations
-    regs_by_month = db.session.query(
-        func.strftime("%Y-%m", Registration.registration_date), func.count(Registration.id)
-    ).group_by(func.strftime("%Y-%m", Registration.registration_date)).order_by(func.strftime("%Y-%m", Registration.registration_date).asc()).all()
+    registration_dates = db.session.query(
+        Registration.registration_date
+    ).all()
 
-    reg_month_labels = [r[0] for r in regs_by_month] if regs_by_month else ["Current"]
-    reg_month_counts = [r[1] for r in regs_by_month] if regs_by_month else [total_registrations]
+    regs_by_month = Counter(
+        registration_date.strftime("%Y-%m")
+        for (registration_date,) in registration_dates
+        if registration_date is not None
+    )
+
+    reg_month_labels = (
+        sorted(regs_by_month.keys()) if regs_by_month else ["Current"]
+    )
+    reg_month_counts = (
+        [regs_by_month[m] for m in reg_month_labels]
+        if regs_by_month else [total_registrations]
+    )
 
     # Recent pending events for quick action
     pending_list = Event.query.filter_by(approval_status="pending").order_by(desc(Event.created_at)).limit(5).all()
