@@ -193,24 +193,7 @@ erDiagram
 
 ---
 
-## 7. Demo Login Credentials
-
-The database seeding script provides pre-configured demo accounts for all roles:
-
-| Role | Email | Password | Description |
-| :--- | :--- | :--- | :--- |
-| **Admin** | `admin@campusconnect.edu` | `Admin@123` | Full administrative control & approvals |
-| **Organizer 1** | `techclub@campusconnect.edu` | `Organizer@123` | Tech & Innovation Club organizer |
-| **Organizer 2** | `cultural@campusconnect.edu` | `Organizer@123` | Cultural & Arts Society organizer |
-| **Organizer 3** | `sports@campusconnect.edu` | `Organizer@123` | Athletics & Sports Board organizer |
-| **Student 1** | `aarav.sharma@campusconnect.edu` | `Student@123` | CSE, 3rd Year (Pre-registered demo student) |
-| **Student 2** | `diya.patel@campusconnect.edu` | `Student@123` | IT, 2nd Year (Pre-registered demo student) |
-
-> **Convenience Feature:** The Login page includes one-click demo login buttons that auto-fill the credentials!
-
----
-
-## 8. Installation & Setup Guide (Windows PowerShell)
+## 7. Installation & Setup Guide (Windows PowerShell)
 
 Follow these exact commands in Windows PowerShell:
 
@@ -256,7 +239,7 @@ http://127.0.0.1:5000/
 
 ---
 
-## 9. Running Automated Tests
+## 8. Running Automated Tests
 
 A comprehensive test suite of 15 automated test cases is included in the `tests/` directory covering:
 * User registration & password hashing
@@ -284,7 +267,7 @@ Expected result:
 
 ---
 
-## 10. Vercel Deployment Configuration
+## 9. Vercel Deployment Configuration
 
 CampusConnect is pre-configured for zero-friction deployment on the **Vercel Serverless Python Runtime**:
 
@@ -305,7 +288,7 @@ vercel
 
 ---
 
-## 11. Project Directory Structure
+## 10. Project Directory Structure
 
 ```
 campusconnect/
