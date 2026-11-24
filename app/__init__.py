@@ -1,7 +1,9 @@
+
 import os
 from flask import Flask, render_template, redirect, url_for
 from config import Config
 from app.extensions import db, login_manager, csrf
+
 
 def create_app(config_class=Config):
     app = Flask(__name__)
@@ -16,9 +18,12 @@ def create_app(config_class=Config):
     @app.context_processor
     def inject_context():
         from flask_login import current_user
+
         unread_count = 0
+
         if current_user.is_authenticated:
             unread_count = current_user.unread_notifications_count
+
         return dict(
             unread_notifications_count=unread_count,
             app_name="CampusConnect",
@@ -45,18 +50,32 @@ def create_app(config_class=Config):
     def index():
         from app.models import Event, User, Registration
         from datetime import date
-        
+
         # Featured upcoming events (approved and future)
         upcoming_events = Event.query.filter(
             Event.approval_status == "approved",
             Event.event_date >= date.today()
-        ).order_by(Event.event_date.asc(), Event.start_time.asc()).limit(6).all()
-        
+        ).order_by(
+            Event.event_date.asc(),
+            Event.start_time.asc()
+        ).limit(6).all()
+
         # Platform statistics
-        total_events = Event.query.filter_by(approval_status="approved").count()
-        total_students = User.query.filter_by(role="student").count()
-        total_organizers = User.query.filter_by(role="organizer").count()
-        total_registrations = Registration.query.filter_by(registration_status="confirmed").count()
+        total_events = Event.query.filter_by(
+            approval_status="approved"
+        ).count()
+
+        total_students = User.query.filter_by(
+            role="student"
+        ).count()
+
+        total_organizers = User.query.filter_by(
+            role="organizer"
+        ).count()
+
+        total_registrations = Registration.query.filter_by(
+            registration_status="confirmed"
+        ).count()
 
         return render_template(
             "landing.html",
@@ -72,13 +91,21 @@ def create_app(config_class=Config):
     def uploaded_file(filename):
         from flask import send_from_directory
         from pathlib import Path
+
         static_uploads = Path(app.root_path) / "static" / "uploads"
+
         if (static_uploads / filename).exists():
             return send_from_directory(static_uploads, filename)
+
         upload_folder = app.config.get("UPLOAD_FOLDER")
+
         if upload_folder and (Path(upload_folder) / filename).exists():
             return send_from_directory(upload_folder, filename)
-        return send_from_directory(static_uploads, "default_event.jpg")
+
+        return send_from_directory(
+            static_uploads,
+            "default_event.jpg"
+        )
 
     # Error handlers
     @app.errorhandler(403)
@@ -93,5 +120,13 @@ def create_app(config_class=Config):
     def internal_error(error):
         db.session.rollback()
         return render_template("errors/500.html"), 500
+
+    # Import all database models
+    from app import models
+
+    # Create missing database tables on Vercel
+    if app.config.get("IS_VERCEL"):
+        with app.app_context():
+            db.create_all()
 
     return app
