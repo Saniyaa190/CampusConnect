@@ -1,3 +1,4 @@
+
 import os
 from pathlib import Path
 from dotenv import load_dotenv
@@ -5,55 +6,71 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / ".env")
 
+
 class Config:
-    SECRET_KEY = os.getenv("SECRET_KEY", "campusconnect-secret-key-prod-2026-btech-project")
-    
-    # Serverless / Vercel environment detection
+    SECRET_KEY = os.getenv(
+        "SECRET_KEY",
+        "campusconnect-secret-key-change-in-production"
+    )
+
     IS_VERCEL = os.getenv("VERCEL") == "1"
 
-    if IS_VERCEL:
-        # Vercel serverless environment: root filesystem is read-only.
-        # Use external DATABASE_URL if provided, else copy packaged SQLite to /tmp so writes succeed.
-        database_url = os.getenv("DATABASE_URL")
-        if not database_url:
-            tmp_db = Path("/tmp") / "campusconnect.db"
-            packaged_db = BASE_DIR / "instance" / "campusconnect.db"
-            if not tmp_db.exists() and packaged_db.exists():
-                import shutil
-                try:
-                    shutil.copy2(packaged_db, tmp_db)
-                except Exception:
-                    pass
-            SQLALCHEMY_DATABASE_URI = f"sqlite:///{tmp_db.as_posix()}"
-        else:
-            SQLALCHEMY_DATABASE_URI = database_url
+    database_url = os.getenv("DATABASE_URL")
 
-        UPLOAD_FOLDER = Path("/tmp") / "uploads"
-        try:
-            UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
-        except OSError:
-            pass
+    if IS_VERCEL:
+        if not database_url:
+            raise RuntimeError(
+                "DATABASE_URL is missing. "
+                "Configure a PostgreSQL database in Vercel."
+            )
+
+        # Normalize PostgreSQL URL for psycopg 3
+        if database_url.startswith("postgres://"):
+            database_url = database_url.replace(
+                "postgres://",
+                "postgresql+psycopg://",
+                1
+            )
+        elif database_url.startswith("postgresql://"):
+            database_url = database_url.replace(
+                "postgresql://",
+                "postgresql+psycopg://",
+                1
+            )
+
+        SQLALCHEMY_DATABASE_URI = database_url
+
+        UPLOAD_FOLDER = Path("/tmp/uploads")
+        UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
+
     else:
         db_path = BASE_DIR / "instance" / "campusconnect.db"
-        try:
-            db_path.parent.mkdir(parents=True, exist_ok=True)
-        except OSError:
-            pass
-        SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL", f"sqlite:///{db_path.as_posix()}")
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+
+        SQLALCHEMY_DATABASE_URI = os.getenv(
+            "DATABASE_URL",
+            f"sqlite:///{db_path.as_posix()}"
+        )
 
         UPLOAD_FOLDER = BASE_DIR / "app" / "static" / "uploads"
-        try:
-            UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
-        except OSError:
-            pass
+        UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16 MB max limit
-    ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "webp", "gif"}
-    
-    # WTForms CSRF
+
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        "pool_pre_ping": True,
+        "pool_recycle": 300
+    }
+
+    MAX_CONTENT_LENGTH = 16 * 1024 * 1024
+
+    ALLOWED_EXTENSIONS = {
+        "png", "jpg", "jpeg", "webp", "gif"
+    }
+
     WTF_CSRF_ENABLED = True
     WTF_CSRF_TIME_LIMIT = None
+
 
 class TestConfig(Config):
     TESTING = True
