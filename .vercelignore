@@ -1,0 +1,10 @@
+# Vercel deployment ignore list
+tests/
+seed.py
+.venv/
+venv/
+.pytest_cache/
+*.log
+.git/
+.gitignore
+.env.example

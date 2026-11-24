@@ -67,6 +67,19 @@ def create_app(config_class=Config):
             total_registrations=total_registrations
         )
 
+    # Uploaded image fallback serving
+    @app.route("/static/uploads/<path:filename>")
+    def uploaded_file(filename):
+        from flask import send_from_directory
+        from pathlib import Path
+        static_uploads = Path(app.root_path) / "static" / "uploads"
+        if (static_uploads / filename).exists():
+            return send_from_directory(static_uploads, filename)
+        upload_folder = app.config.get("UPLOAD_FOLDER")
+        if upload_folder and (Path(upload_folder) / filename).exists():
+            return send_from_directory(upload_folder, filename)
+        return send_from_directory(static_uploads, "default_event.jpg")
+
     # Error handlers
     @app.errorhandler(403)
     def forbidden_error(error):

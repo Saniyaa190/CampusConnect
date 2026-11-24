@@ -5,11 +5,9 @@ from app import create_app
 from app.extensions import db
 from app.models import User, Event, Registration, Notification, EventAttendance
 
-app = create_app()
-
-def generate_banner(filename, title_text, bg_color1, bg_color2):
+def generate_banner(app_instance, filename, title_text, bg_color1, bg_color2):
     """Generate professional SVG/JPEG banners for sample events."""
-    folder = app.config["UPLOAD_FOLDER"]
+    folder = app_instance.config["UPLOAD_FOLDER"]
     os.makedirs(folder, exist_ok=True)
     file_path = os.path.join(folder, filename)
     
@@ -33,6 +31,7 @@ def generate_banner(filename, title_text, bg_color1, bg_color2):
 
 
 def seed_database():
+    app = create_app()
     with app.app_context():
         print("Resetting database schema...")
         db.drop_all()
@@ -59,7 +58,7 @@ def seed_database():
         ]
 
         for fname, title, c1, c2 in banners:
-            generate_banner(fname, title, c1, c2)
+            generate_banner(app, fname, title, c1, c2)
 
         print("Creating User Accounts...")
         # 1 Demo Admin

@@ -279,16 +279,39 @@ To run the complete test suite:
 
 Expected result:
 ```
-====================== 15 passed in 43.02s ======================
+====================== 15 passed in 40.14s ======================
 ```
 
 ---
 
-## 10. Project Directory Structure
+## 10. Vercel Deployment Configuration
+
+CampusConnect is pre-configured for zero-friction deployment on the **Vercel Serverless Python Runtime**:
+
+* **Serverless Entrypoint:** `api/index.py` (exports the canonical `app` WSGI instance)
+* **WSGI Root Entrypoint:** `wsgi.py` (WSGI standard entrypoint)
+* **Routing Rewrites:** `vercel.json` rewrites all incoming traffic `/(.*)` to `/api/index`
+* **Entrypoint Specification:** `pyproject.toml` explicitly sets `[tool.vercel] entrypoint = "api/index.py"`
+* **Build Exclusions:** `.vercelignore` excludes development scripts (`seed.py`), unit tests (`tests/`), and virtual environments (`.venv/`) so Vercel's framework detector never mistakes them for entrypoints.
+* **Serverless Writable Storage:** `config.py` detects `VERCEL=1` and ensures writable storage in `/tmp` for SQLite and dynamic uploads.
+
+### Deploying to Vercel:
+```bash
+# Using Vercel CLI
+vercel
+
+# Or push your GitHub repository and import the project in the Vercel Dashboard
+```
+
+---
+
+## 11. Project Directory Structure
 
 ```
 campusconnect/
 │
+├── api/
+│   └── index.py             # Vercel Serverless Function entry point
 ├── app/
 │   ├── __init__.py          # Flask application factory, blueprints & context processors
 │   ├── extensions.py        # SQLAlchemy, LoginManager, CSRFProtect instances
@@ -297,27 +320,37 @@ campusconnect/
 │   ├── utils.py             # Role decorators (@role_required), file upload & notification helpers
 │   │
 │   ├── auth/                # Authentication blueprint (Login, Register, Logout, Profile)
-│   │   ├── __init__.py
-│   │   └── routes.py
 │   ├── student/             # Student dashboard & registration management
-│   │   ├── __init__.py
-│   │   └── routes.py
 │   ├── organizer/           # Organizer dashboard, event CRUD, attendance & analytics
-│   │   ├── __init__.py
-│   │   └── routes.py
 │   ├── admin/               # Admin panel, event approvals, user directory & global analytics
-│   │   ├── __init__.py
-│   │   └── routes.py
 │   ├── events/              # Event catalog discovery, search/filtering, details & registration
-│   │   ├── __init__.py
-│   │   └── routes.py
-│   ├── notifications/       # In-app notifications feed & mark-as-read
-│   │   ├── __init__.py
-│   │   └── routes.py
+│   └── notifications/       # In-app notifications feed & mark-as-read
 │   │
 │   ├── static/
-│   │   ├── css/
-│   │   │   └── styles.css   # Custom SaaS UI styling (Deep Indigo & Violet palette)
+│   │   ├── css/styles.css   # Custom SaaS UI styling (Deep Indigo & Violet palette)
+│   │   ├── js/main.js       # Image preview, auto-dismiss alerts, confirmation dialogs
+│   │   └── uploads/         # Event cover images & banners
+│   │
+│   └── templates/           # Jinja2 responsive templates (base, landing, dashboards, etc.)
+│
+├── instance/
+│   └── campusconnect.db     # SQLite local database
+├── tests/
+│   ├── __init__.py
+│   ├── conftest.py          # Pytest fixtures and test database setup
+│   └── test_campusconnect.py# 15 automated test cases
+├── config.py                # Base configuration & Vercel serverless adaptation
+├── wsgi.py                  # Canonical WSGI entry point
+├── run.py                   # Local development server entry point
+├── seed.py                  # Database seeding script with realistic campus events
+├── vercel.json              # Vercel URL rewrite routing configuration
+├── pyproject.toml           # Vercel tool entrypoint configuration
+├── .vercelignore            # Vercel build ignore rules
+├── requirements.txt         # Pinned Python package dependencies
+├── .env.example             # Environment variable template
+├── .gitignore               # Git ignore rules
+└── README.md                # Project documentation
+```
 │   │   ├── js/
 │   │   │   └── main.js      # Image preview, auto-dismiss alerts, confirmation dialogs
 │   │   └── uploads/         # Event cover images & banners
